@@ -22,20 +22,37 @@ module.exports = function (grunt) {
         files: [{
           expand: true,
           cwd: 'src',
-          src: [
-            '**/*.js',
-            '!providers/localStorage.js',
-            '!index.browser.js'
-          ],
+          src: '**/*.js',
           dest: 'lib'
         }]
+      }
+    },
+
+    webpack: {
+      dist: {
+        entry: './src/client/client.js',
+        output: {
+          path: 'dist',
+          filename: 'socket.js'
+        },
+        progress: true,
+        stats: {
+          errorDetails: true
+        },
+        module: {
+          loaders: [{
+            test: /\.js$/,
+            exclude: /(node_modules|bower_components)/,
+            loader: 'babel'
+          }]
+        }
       }
     },
 
     uglify: {
       dist: {
         files: {
-          'dist/config.min.js': 'dist/config.js'
+          'dist/socket.min.js': 'dist/socket.js'
         }
       },
       options: {
@@ -49,9 +66,10 @@ module.exports = function (grunt) {
   });
 
   grunt.registerTask('default', [
+    'clean',
     'babel',
-    'browserify',
-    'uglify'
+    'webpack:dist',
+    'uglify:dist'
   ]);
 
   grunt.registerTask('lint', ['eslint']);

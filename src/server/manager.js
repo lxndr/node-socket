@@ -1,9 +1,6 @@
 import _ from 'lodash';
 import {Namespace} from './namespace';
 
-/**
- * @class Manager
- */
 export class Manager {
   constructor() {
     this.namespaces = [];

@@ -5,8 +5,10 @@
   "main": "lib/index.js",
   "license": "MIT",
   "browser": "src/client/client.js",
+  "repository": "lxndr/node-socket",
   "devDependencies": {
     "babel-eslint": "^6.1.2",
+    "babel-loader": "^6.2.4",
     "babel-plugin-lodash": "^3.2.0",
     "babel-plugin-transform-async-to-generator": "^6.8.0",
     "babel-plugin-transform-runtime": "^6.9.0",
@@ -16,11 +18,16 @@
     "eslint-plugin-babel": "^3.3.0",
     "grunt": "^1.0.1",
     "grunt-babel": "^6.0.0",
+    "grunt-contrib-clean": "^1.0.0",
+    "grunt-contrib-uglify": "^1.0.1",
     "grunt-mocha-test": "^0.12.7",
+    "grunt-webpack": "^1.0.11",
     "jsdoc": "^3.4.0",
     "load-grunt-tasks": "^3.5.0",
     "mocha": "^2.5.3",
-    "webpack": "^1.13.1"
+    "uglify-js": "^2.7.0",
+    "webpack": "^1.13.1",
+    "webpack-dev-server": "^1.14.1"
   },
   "dependencies": {
     "json5": "^0.5.0",
