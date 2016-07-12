@@ -3,6 +3,11 @@ import json5 from 'json5';
 import EventEmitter from 'events';
 import Url from 'url';
 
+class FakeRoom {
+  on() {}
+  emit() {}
+}
+
 class Room extends EventEmitter {
   constructor(socket, room) {
     super();
@@ -11,11 +16,9 @@ class Room extends EventEmitter {
   }
 
   on(name, cb) {
-
   }
 
   emit(name, data) {
-
   }
 }
 
@@ -72,26 +75,31 @@ export class SocketClient extends EventEmitter {
   }
 
   _send(type, ...args) {
-    const id = this.packetId++;
-    const packet = [type, id];
+    const packet = {type};
 
     switch (type) {
-      case 0:
-        if (this.uuid) {
-          packet.push(this.uuid);
+      case 0: {
+        const [id, payload] = args;
+        packet.push(id);
+        if (!_.isUndefined(payload)) {
+          packet.push(payload);
         }
         break;
+      }
       case 2:
         break;
-      case 3:
-        packet.push(...args);
+      case 3: {
+        const id = this.packetId++;
+        packet.data = json5.stringify([3, id, ...args]);
         break;
+      }
       default:
         return;
     }
 
     this.queue.push(packet);
     this._flush();
+    return packet;
   }
 
   _flush() {
@@ -114,22 +122,32 @@ export class SocketClient extends EventEmitter {
     const [type, id, ...args] = data;
 
     switch (type) {
-      case 0:
-        [this.uuid] = args;
-        super.emit('connect');
-        break;
-      case 3: {
-        const [room, name, payload] = args;
+      case 0: { /* acknowlegment */
+        const [payload] = args;
         const [packet] = _.remove(this.packets, packet => {
-          return packet.id === id && _.eq(packet.room, room);
+          return packet.sent && packet.id === id;
         });
 
-        if (!packet) {
-          return;
+        if (packet) {
+          packet.cb(payload);
         }
 
-        this._send(4, packet.id);
-        this.emit(name, payload);
+        break;
+      }
+      case 1: /* ping */
+        this._send(1);
+        break;
+      case 2: {
+        const [room, name, payload] = args;
+
+        if (room) {
+          const r = _.find(this.rooms, ['name', room]);
+          if (r) {
+            r._emit(name, payload);
+          }
+        } else {
+          super.emit(name, payload);
+        }
         break;
       }
       default:
@@ -138,7 +156,8 @@ export class SocketClient extends EventEmitter {
   }
 
   in(room) {
-
+    const r = _.find(this.rooms, [name, room]);
+    return r ? r : new FakeRoom();
   }
 
   async join(room) {
