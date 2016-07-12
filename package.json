@@ -1,29 +1,32 @@
 {
-  "name": "@lxndr/node-socket",
+  "name": "@lxndr/socket",
   "version": "1.0.0-alpha.1",
   "description": "",
   "main": "lib/index.js",
   "license": "MIT",
+  "browser": "src/client/client.js",
   "devDependencies": {
-    "babel-eslint": "^6.0.4",
-    "babel-plugin-lodash": "^3.1.4",
+    "babel-eslint": "^6.1.2",
+    "babel-plugin-lodash": "^3.2.0",
+    "babel-plugin-transform-async-to-generator": "^6.8.0",
     "babel-plugin-transform-runtime": "^6.9.0",
     "babel-preset-es2015": "^6.9.0",
-    "babelify": "^7.3.0",
-    "browserify": "^13.0.1",
-    "eslint": "^2.10.2",
-    "eslint-config-xo": "^0.14.1",
-    "eslint-plugin-babel": "^3.2.0",
+    "eslint": "^3.0.1",
+    "eslint-config-xo": "^0.15.2",
+    "eslint-plugin-babel": "^3.3.0",
     "grunt": "^1.0.1",
     "grunt-babel": "^6.0.0",
-    "grunt-browserify": "^5.0.0",
-    "jsdoc": "^3.4.0"
+    "grunt-mocha-test": "^0.12.7",
+    "jsdoc": "^3.4.0",
+    "load-grunt-tasks": "^3.5.0",
+    "mocha": "^2.5.3",
+    "webpack": "^1.13.1"
   },
   "dependencies": {
     "json5": "^0.5.0",
     "lodash": "^4.13.1",
     "uuid": "^2.0.2",
-    "ws": "^1.1.0"
+    "ws": "^1.1.1"
   },
   "scripts": {
     "prepublish": "grunt clean && grunt",

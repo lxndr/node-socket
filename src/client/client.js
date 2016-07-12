@@ -1,20 +1,48 @@
-/* global WebSocket */
-
 import _ from 'lodash';
 import json5 from 'json5';
-import {Evented} from '../evented.js';
+import EventEmitter from 'events';
+import Url from 'url';
+
+class Room extends EventEmitter {
+  constructor(socket, room) {
+    super();
+    this.socket = socket;
+    this.room = room;
+  }
+
+  on(name, cb) {
+
+  }
+
+  emit(name, data) {
+
+  }
+}
 
 /**
  * Browser client.
- * @class Client
  * @memberof client
  */
-export class Client extends Evented {
-  constructor(url, options) {
+export class SocketClient extends EventEmitter {
+  constructor(url, options = {}) {
     super();
-    this.url = url;
     this.rooms = new Set();
     this.ws = null;
+    this.uuid = null;
+    this.packetId = 0;
+
+    const urlObject = _(Url.parse(url))
+      .pick(['hostname', 'port', 'path'])
+      .omitBy(_.isNil)
+      .defaults({
+        protocol: location.protocol === 'https:' ? 'wss' : 'ws',
+        slashes: true,
+        hostname: location.hostname,
+        port: location.port
+      })
+      .value();
+
+    this.url = Url.format(urlObject);
 
     this.options = options;
     _.defaults(this.options, {
@@ -24,11 +52,11 @@ export class Client extends Evented {
   }
 
   connect() {
-    this.scoket = new WebSocket(this.url);
+    this.socket = new WebSocket(this.url);
 
     this.socket.onopen = () => {
-      super.emit('connect');
-    }
+      this._send(1);
+    };
 
     this.socket.onclose = event => {
       super.emit('disconnect');
@@ -36,21 +64,80 @@ export class Client extends Evented {
       setTimeout(() => {
         this.connect();
       }, this.options.reconnectCooldown);
-    }
+    };
 
     this.socket.onmessage = data => {
-      input = json5.parse(input);
+      this._parse(data);
+    };
+  }
 
-      if (!_.isArray(input)) {
+  _send(type, ...args) {
+    const id = this.packetId++;
+    const packet = [type, id];
+
+    switch (type) {
+      case 0:
+        if (this.uuid) {
+          packet.push(this.uuid);
+        }
+        break;
+      case 2:
+        break;
+      case 3:
+        packet.push(...args);
+        break;
+      default:
+        return;
+    }
+
+    this.queue.push(packet);
+    this._flush();
+  }
+
+  _flush() {
+    for (;;) {
+      const packet = this.queue.unshift();
+      if (!packet) {
         return;
       }
 
-      const [room, name, data] = input;
-      this.emit(name, data);
+
     }
   }
 
-  to(room) {
+  _parse(data) {
+    data = json5.parse(data);
+    if (!_.isArray(data)) {
+      return;
+    }
+
+    const [type, id, ...args] = data;
+
+    switch (type) {
+      case 0:
+        [this.uuid] = args;
+        super.emit('connect');
+        break;
+      case 3: {
+        const [room, name, payload] = args;
+        const [packet] = _.remove(this.packets, packet => {
+          return packet.id === id && _.eq(packet.room, room);
+        });
+
+        if (!packet) {
+          return;
+        }
+
+        this._send(4, packet.id);
+        this.emit(name, payload);
+        break;
+      }
+      default:
+        return;
+    }
+  }
+
+  in(room) {
 
   }
 

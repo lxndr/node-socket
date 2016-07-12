@@ -1,5 +1,3 @@
-'use strict';
-
 module.exports = function (grunt) {
   require('load-grunt-tasks')(grunt);
 
@@ -31,33 +29,6 @@ module.exports = function (grunt) {
           ],
           dest: 'lib'
         }]
-      },
-      options: {
-        plugins: [
-          'transform-es2015-modules-commonjs'
-        ]
-      }
-    },
-
-    browserify: {
-      dist: {
-        files: {
-          'dist/socket.js': 'src/client/index.js'
-        }
-      },
-      options: {
-        browserifyOptions: {
-          standalone: 'config'
-        },
-        transform: [
-          ['babelify', {
-            presets: ['es2015'],
-            plugins: [
-              'lodash',
-              'transform-runtime'
-            ]
-          }]
-        ]
       }
     },
 
@@ -69,6 +40,7 @@ module.exports = function (grunt) {
       },
       options: {
         screwIE8: true,
+        mangle: true,
         compress: {
           dead_code: true
         }

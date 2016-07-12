@@ -7,7 +7,6 @@ import {Namespace} from './namespace';
 export class Manager {
   constructor() {
     this.namespaces = [];
-    this.clients = [];
   }
 
   of(namespace) {
@@ -18,7 +17,7 @@ export class Manager {
     let server = _.find(this.namespaces, {name: namespace});
     if (!server) {
       server = new Namespace(namespace);
-      servers.push(server);
+      this.namespaces.push(server);
     }
 
     return server;

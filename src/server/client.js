@@ -99,7 +99,6 @@ export class SocketClient extends EventEmitter {
           if (packet.deferred) {
             packet.deferred.reject(err);
           }
-          return;
         }
       });
     }
