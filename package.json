@@ -2,7 +2,7 @@
   "name": "@lxndr/socket",
   "version": "1.0.0-alpha.1",
   "description": "",
-  "main": "lib/index.js",
+  "main": "src/server/server.js",
   "license": "MIT",
   "browser": "src/client/client.js",
   "repository": "lxndr/node-socket",

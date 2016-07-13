@@ -9,3 +9,28 @@ export function deffer() {
 
   return {resolve, reject, promise};
 }
+
+export class Interval {
+  constructor(interval, cb) {
+    this.intervalId = null;
+    this.interval = interval;
+    this.cb = cb;
+  }
+
+  start() {
+    if (!this.intervalId) {
+      this.intervalId = setInterval(this.cb, this.interval);
+    }
+  }
+
+  stop() {
+    if (this.timeoutId) {
+      clearInterval(this.intervalId);
+    }
+  }
+
+  reset() {
+    this.stop();
+    this.start();
+  }
+}

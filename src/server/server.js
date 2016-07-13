@@ -1,19 +1,23 @@
 import _ from 'lodash';
 import {Namespace} from './namespace';
 
-export class Manager {
-  constructor() {
+export class ServerSocket {
+  constructor(httpServer) {
+    this.httpServer = httpServer;
     this.namespaces = [];
   }
 
-  of(namespace) {
-    if (_.isEmpty(namespace)) {
-      namespace = '';
+  /**
+   * @param {String} name
+   */
+  of(name) {
+    if (_.isEmpty(name)) {
+      name = null;
     }
 
-    let server = _.find(this.namespaces, {name: namespace});
+    let server = _.find(this.namespaces, {name});
     if (!server) {
-      server = new Namespace(namespace);
+      server = new Namespace(this, name);
       this.namespaces.push(server);
     }
 

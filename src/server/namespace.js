@@ -1,32 +1,67 @@
+import Url from 'url';
+import _ from 'lodash';
 import ws from 'ws';
 import {Client} from './client';
 import {Room} from './room';
 
-/**
- * @class Namespace
- */
 export class Namespace {
   constructor(manager, name) {
     this.manager = manager;
     this.name = name;
-    this.socket = new ws.Server(name);
+    this.clients = [];
+
+    this.socket = new ws.Server({
+      server: this.manager.httpServer,
+      path: name,
+      verifyClient: (info, cb) => {
+        const query = Url.parse(info.req.url, true).query;
+
+        if (!query.uuid) {
+          cb(false, 401, 'Client did not provided UUID');
+          return;
+        }
+
+        let client = _.find(this.clients, ['uuid', query.uuid]);
+        if (client) {
+          cb(true);
+          return;
+        }
+
+        client = new Client(query.uuid);
+
+        if (this.verifyClient) {
+          this.verifyClient(client, info.req, (...args) => {
+            if (args[0] === true) {
+              this.clients.push(client);
+            }
+            cb(...args);
+          });
+        } else {
+          this.clients.push(client);
+          cb(true);
+        }
+      }
+    });
 
     this.socket.on('connection', socket => {
-      const client = new Client(socket);
-      this.clients.push(client);
+      const query = Url.parse(socket.upgradeReq.url, true).query;
+      const client = _.find(this.clients, ['uuid', query.uuid]);
+      client.socket = socket;
     });
   }
 
   /**
-   * @see Manager#emit
-   */
+  * @param {String} name
+  */
+  in(name) {
+    return new Room(this, name);
+  }
+
+  on() {}
+
   emit(...args) {
     return Promise.all(
       this.clients.map(client => client.emit(...args))
     );
-  }
-
-  in(name) {
-    return new Room(this, name);
   }
 }

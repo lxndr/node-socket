@@ -1,31 +1,32 @@
+import _ from 'lodash';
+import WebSocket from 'ws';
 import json5 from 'json5';
 import {EventEmitter} from 'events';
 import {deffer} from '../util';
 
 const $socket = Symbol('websocket client');
 const $queue = Symbol('outgoing queue');
+const $rooms = Symbol('rooms');
 
 /**
  * Class representing a client connection
- * @extends Evented
  */
-export class SocketClient extends EventEmitter {
-  constructor() {
+export class Client extends EventEmitter {
+  constructor(uuid) {
     super();
+    this.uuid = uuid;
     this[$socket] = null;
     this[$queue] = [];
-    this.rooms = [];
-    this.latency = null;
-  }
-
-  get socket() {
-    return this[$socket];
+    this[$rooms] = [];
   }
 
   /**
    * @property {ws.WebSocket}
-   * @private
    */
+  get socket() {
+    return this[$socket];
+  }
+
   set socket(socket) {
     this[$socket] = socket;
     super.emit('connect');
@@ -36,10 +37,8 @@ export class SocketClient extends EventEmitter {
     });
 
     this[$socket].on('message', (buffer, flags) => {
-      if (flags.binary) {
-
-      } else {
-        this.parsePacket(buffer);
+      if (!flags.binary) {
+        this._parse(buffer);
       }
     });
   }
@@ -47,22 +46,39 @@ export class SocketClient extends EventEmitter {
   /**
    * @private
    */
-  parsePacket(buffer) {
-    const packet = json5.parse(buffer);
-    const type = packet[0];
+  _parse(data) {
+    data = json5.parse(data);
+    if (!_.isArray(data)) {
+      return;
+    }
+
+    const [type, id, ...args] = data;
 
     switch (type) {
-      case 0:
-          // ack
+      case 0: { /* acknowlegment */
+        const [packet] = _.remove(this[$queue], packet => packet.id === id);
+        if (packet && packet.deffered) {
+          packet.deffered.resolve(args[0]);
+        }
+
         break;
-      /* message */
+      }
       case 1:
-        const [, name, data] = packet;
-        super.emit(name, data);
+        this._pong();
         break;
+      case 3: { /* message */
+        const [room, name, payload] = args;
+        this._ack(id);
+        // EventEmitter.prototype.emit.call(this.in(room), name, payload);
+        break;
+      }
       default:
         break;
     }
+  }
+
+  on(...args) {
+    this.in().on(...args);
   }
 
   /**
@@ -72,35 +88,71 @@ export class SocketClient extends EventEmitter {
    * @returns {Promise|null}
    */
   emit(...args) {
-    const [name, data] = args.length > 1 ? args : [null, args[0]];
-
-    const packet = {
-      type: 1,
-      name,
-      data,
-      deferred: deffer()
-    };
-
-    this[$queue].push(packet);
-    this.flushQueue();
+    return this.in().emit(...args);
   }
 
-  /**
-   * @private
-   */
-  flushQueue() {
-    if (!this[$socket]) {
+  _emit(room, name, payload) {
+    const id = this.packetId++;
+    const packet = {
+      type: 3,
+      sent: false,
+      id,
+      deffered: deffer(),
+      data: json5.stringify([3, id, room, name, payload])
+    };
+
+    this._enqueue(packet);
+    return packet.deffered.promise;
+  }
+
+  _ack(id) {
+    const packet = {
+      type: 0,
+      sent: false,
+      id,
+      data: json5.stringify([0, id])
+    };
+
+    this._enqueue(packet);
+  }
+
+  _pong() {
+    const packet = {
+      type: 2,
+      sent: false,
+      data: json5.stringify([2])
+    };
+
+    this._enqueue(packet);
+  }
+
+  _enqueue(packet) {
+    this[$queue].push(packet);
+    this._flush();
+  }
+
+  _flush() {
+    if (!(this[$socket] && this[$socket].readyState === WebSocket.OPEN)) {
       return;
     }
 
-    for (const packet of this[$queue]) {
-      this[$socket].send(packet.buffer, err => {
-        if (err) {
-          if (packet.deferred) {
-            packet.deferred.reject(err);
+    _(this[$queue])
+      .filter({sent: false})
+      .each(packet => {
+        this[$socket].send(packet.data, err => {
+          packet.sent = true;
+
+          if (err) {
+            if (packet.deferred) {
+              packet.deferred.reject(err);
+            }
+            return;
           }
-        }
+        });
       });
-    }
+
+    _.remove(this.queue, packet => {
+      return packet.sent === true && !packet.deffered;
+    });
   }
 }
