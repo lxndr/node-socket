@@ -18,6 +18,7 @@ export class Client extends EventEmitter {
     this[$socket] = null;
     this[$queue] = [];
     this[$rooms] = [];
+    this.packetId = 0;
   }
 
   /**
@@ -70,6 +71,7 @@ export class Client extends EventEmitter {
         const [room, name, payload] = args;
         this._ack(id);
         // EventEmitter.prototype.emit.call(this.in(room), name, payload);
+        super.emit(name, payload);
         break;
       }
       default:
@@ -77,40 +79,42 @@ export class Client extends EventEmitter {
     }
   }
 
-  on(...args) {
-    this.in().on(...args);
+  send(data) {
+    return this._emit(null, data);
   }
 
-  /**
-   * Sends structured data to the client.
-   * @param {String} [name] - The name of the message.
-   * @param {any} data
-   * @returns {Promise|null}
-   */
-  emit(...args) {
-    return this.in().emit(...args);
+  emit(name, data) {
+    if (name === 'message') {
+      name = null;
+    }
+
+    return this._emit(null, name, data);
   }
 
   _emit(room, name, payload) {
     const id = this.packetId++;
+    const data = payload === undefined ? [3, id, room, name] : [3, id, room, name, payload];
+
     const packet = {
       type: 3,
       sent: false,
       id,
       deffered: deffer(),
-      data: json5.stringify([3, id, room, name, payload])
+      data: json5.stringify([3, id, room, name, data])
     };
 
     this._enqueue(packet);
     return packet.deffered.promise;
   }
 
-  _ack(id) {
+  _ack(id, payload) {
+    const data = payload === undefined ? [0, id] : [0, id, payload];
+
     const packet = {
       type: 0,
       sent: false,
       id,
-      data: json5.stringify([0, id])
+      data: json5.stringify(data)
     };
 
     this._enqueue(packet);

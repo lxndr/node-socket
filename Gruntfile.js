@@ -33,7 +33,8 @@ module.exports = function (grunt) {
         entry: './src/client/client.js',
         output: {
           path: 'dist',
-          filename: 'socket.js'
+          filename: 'socket.js',
+          libraryTarget: 'umd'
         },
         progress: true,
         stats: {

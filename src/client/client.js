@@ -12,20 +12,12 @@ class Room extends EventEmitter {
     this.name = name;
   }
 
-  emit(...args) {
-    let name = null;
-    let payload = null;
-
-    if (args.length === 1) {
-      [payload] = args;
-    } else {
-      [name, payload] = args;
-      if (name === 'message') {
-        name = null;
-      }
+  emit(name, data) {
+    if (name === 'message') {
+      name = null;
     }
 
-    return this.socket._emit(this.name, name, payload);
+    return this.socket._emit(this.name, name, data);
   }
 
   _emit(...args) {
@@ -221,12 +213,13 @@ export class SocketClient {
     this._enqueue(packet);
   }
 
-  _ack(id) {
+  _ack(id, payload) {
+    const data = payload === undefined ? [0, id] : [0, id, payload];
     const packet = {
       type: 0,
       sent: false,
       id,
-      data: json5.stringify([0, id])
+      data: json5.stringify(data)
     };
 
     this._enqueue(packet);
