@@ -1,40 +1,9 @@
 import _ from 'lodash';
-import EventEmitter from 'events';
 import Url from 'url';
 import UUID from 'uuid';
 import {BaseClient} from '../base-client';
+import {Room} from '../room';
 import {Interval} from '../util';
-
-class Room extends EventEmitter {
-  constructor(socket, name = null) {
-    super();
-    this.socket = socket;
-    this.name = name;
-  }
-
-  emit(name, data) {
-    if (name === 'message') {
-      name = null;
-    }
-
-    return this.socket._emit(this.name, name, data);
-  }
-
-  _emit(...args) {
-    super.emit(...args);
-  }
-}
-
-class FakeRoom {
-  constructor(name) {
-    this.name = name;
-    console.log('Attempt to enter room', name, 'which does not exist');
-  }
-
-  on() {}
-  emit() {}
-  _emit() {}
-}
 
 /**
  * Browser client.
