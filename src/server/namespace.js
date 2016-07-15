@@ -46,7 +46,7 @@ export class Namespace {
     this.socket.on('connection', socket => {
       const query = Url.parse(socket.upgradeReq.url, true).query;
       const client = _.find(this.clients, ['uuid', query.uuid]);
-      client.socket = socket;
+      client._setSocket(socket);
     });
   }
 

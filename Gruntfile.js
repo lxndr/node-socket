@@ -13,7 +13,11 @@ module.exports = function (grunt) {
 
     mochaTest: {
       test: {
-        src: 'tests/*.js'
+        src: 'tests/*.js',
+        options: {
+          reporter: 'spec',
+          require: 'tests/support/node'
+        }
       }
     },
 

@@ -1,3 +1,5 @@
+import _ from 'lodash';
+
 export function deffer() {
   let resolve;
   let reject;
@@ -8,6 +10,42 @@ export function deffer() {
   });
 
   return {resolve, reject, promise};
+}
+
+export function promiseFromCallback(cb) {
+  return new Promise((resolve, reject) => {
+    try {
+      cb((err, value) => {
+        if (err) {
+          reject(err);
+          return;
+        }
+
+        resolve(value);
+      });
+    } catch (err) {
+      reject(err);
+    }
+  });
+}
+
+export function callback(self, fn) {
+  return function (...args) {
+    if (fn.length <= 1) {
+      return new Promise(resolve => {
+        const ret = fn.apply(self, args);
+        resolve(ret);
+      });
+    }
+
+    if (args.length !== fn.length - 1) {
+      throw new TypeError('callback argument mismatch');
+    }
+
+    return promiseFromCallback(cb => {
+      fn.apply(self, [...args, cb]);
+    });
+  };
 }
 
 export class Interval {
