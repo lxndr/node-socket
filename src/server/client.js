@@ -1,4 +1,3 @@
-import _ from 'lodash';
 import WebSocket from 'ws';
 import {BaseClient} from '../base-client';
 
@@ -11,12 +10,8 @@ export class Client extends BaseClient {
     this.uuid = uuid;
   }
 
-  emit(name, data) {
-    return this._emit(null, name, data);
-  }
-
-  _send(...args) {
-    this._socket.send(...args);
+  _send(data, cb) {
+    this._socket.send(data, cb);
   }
 
   _isSocketOpen() {

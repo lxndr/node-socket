@@ -64,8 +64,4 @@ export class Namespace {
       this.clients.map(client => client.emit(...args))
     );
   }
-
-  _dispatch(packet) {
-
-  }
 }

@@ -1,6 +1,7 @@
 import _ from 'lodash';
 import json5 from 'json5';
-import {deffer} from './util';
+import {Room, FakeRoom} from './room';
+import {log, deffer} from './util';
 
 const TYPE_ACK = 0;
 const TYPE_ACKERR = 0;
@@ -15,34 +16,100 @@ export class BaseClient {
     this._queue = [];
     this._rooms = [];
     this._packetId = 0;
+    this._closed = false;
+    this._ensureRoom(null);
   }
 
   close() {
-    if (this._socket) {
-      this._socket.close();
-      // this.in()._emit('close');
+    this._closeSocket();
+    this._closed = true;
+  }
+
+  _findRoom(name) {
+    return _.find(this._rooms, ['name', name]);
+  }
+
+  _ensureRoom(name) {
+    let room = this._findRoom(name);
+
+    if (!room) {
+      room = new Room(this, name);
+      this._rooms.push(room);
     }
+
+    return room;
+  }
+
+  _removeRoom(name) {
+    const rooms = _.remove(this._rooms, room => room.name === name);
+    rooms.forEach(room => room.removeAllListeners());
+  }
+
+  in(name = null) {
+    const room = this._findRoom(name);
+    return room ? room : new FakeRoom(name);
+  }
+
+  on(event, cb) {
+    this.in().on(event, cb);
   }
 
   send(data) {
-    return this._emit(null, data);
+    return this.emit(null, data);
   }
 
+  emit(name, data) {
+    return this.in().emit(name, data);
+  }
+
+  _closeSocket() {
+    if (this._socket) {
+      this._socket.onopen = null;
+      this._socket.onmessage = null;
+      this._socket.onclose = null;
+      this._socket.onerror = null;
+      this._socket.close();
+      this._socket = null;
+      this.in().dispatch('disconnect');
+    }
+  }
+
+  /**
+   * onclose event handler for native socket
+   * @private
+   */
+  _onclose(event) {
+    log(`disconnected (wasClean: ${event.wasClean}, reason: ${event.reason})`);
+    this._closeSocket();
+
+    if (event.wasClean) {
+      this.close();
+      this.in().dispatch('close');
+    }
+  }
+
+  /**
+   * prepares open native socket
+   * @private
+   */
   _setSocket(socket) {
+    log(`connected`);
+
+    this._closeSocket();
     this._socket = socket;
 
     this._socket.onmessage = event => {
       this._parse(event.data);
     };
 
-    this._socket.onclose = event => {
-      // this.in()._emit('disconnect');
+    this._socket.onclose = _.bindKey(this, '_onclose');
+
+    this._socket.onerror = () => {
+      log(`errored`);
+      this.in().dispatch('error');
     };
 
-    this._socket.onerror = event => {
-    };
-
-    // this.in()._emit('connect');
+    this.in().dispatch('connect');
     this._flush();
   }
 
@@ -63,15 +130,15 @@ export class BaseClient {
         break;
       }
       case TYPE_PING:
-        this._ping();
+        this._pong();
         break;
       case TYPE_PONG:
-        // emit('pong');
+        this.in().dispatch('pong');
         break;
       case TYPE_MESSAGE: {
         const [room, name, payload] = args;
         this.in(room)
-          ._emit(name, payload)
+          .dispatch(name, payload)
           .then(
             data => this._ack(id, data),
             err => this._ack(id, err)
@@ -104,7 +171,7 @@ export class BaseClient {
       name = null;
     }
 
-    const packet = this._enqueue(TYPE_MESSAGE, this._packetId++, _.take(arguments), true);
+    const packet = this._enqueue(TYPE_MESSAGE, this._packetId++, _.take(arguments, 3), true);
     return packet.deffered.promise;
   }
 
@@ -112,13 +179,14 @@ export class BaseClient {
     const _data = [type];
     const packet = {type, sent: false};
 
-    if (id) {
-      data.push(id);
+    if (id !== undefined) {
+      _data.push(id);
       packet.id = id;
     }
 
-    if (data) {
-      data.push(...data);
+    if (data !== undefined) {
+      data = _.dropRightWhile(data, _.isUndefined);
+      _data.push(...data);
     }
 
     if (deffered) {
@@ -126,13 +194,13 @@ export class BaseClient {
     }
 
     packet.data = json5.stringify(_data);
-    this.queue.push(packet);
+    this._queue.push(packet);
     this._flush();
     return packet;
   }
 
   _flush() {
-    if (!(this._socket && this._isSocketOpen())) {
+    if (!this._socket) {
       return;
     }
 
@@ -151,7 +219,7 @@ export class BaseClient {
         });
       });
 
-    _.remove(this.queue, packet => {
+    _.remove(this._queue, packet => {
       return packet.sent === true && !packet.deffered;
     });
   }

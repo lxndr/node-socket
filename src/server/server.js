@@ -25,12 +25,12 @@ export class ServerSocket {
   }
 
   /**
-   * @param {String} [name]
+   * @param {String} name
    * @param {any} data
    */
-  emit(...args) {
+  emit(name, data) {
     return Promise.all(
-      this.namespaces.map(namespace => namespace.emit(...args))
+      this.namespaces.map(namespace => namespace.emit(name, data))
     );
   }
 }

@@ -2,23 +2,110 @@ import _ from 'lodash';
 import Url from 'url';
 import UUID from 'uuid';
 import {BaseClient} from '../base-client';
-import {Room} from '../room';
-import {Interval} from '../util';
+import {log, Interval} from '../util';
 
 /**
  * Browser client.
- * @memberof client
  */
 export class SocketClient extends BaseClient {
   constructor(url, options = {}) {
     super();
+    this.url = url;
     this.uuid = UUID.v4();
-    this.options = _.defaults({}, options, {
-      timeout: 10000,
-      reconnectCooldown: 2500
-    });
 
-    const urlObject = _(Url.parse(url))
+    this.heartbeatInterval = options.heartbeatInterval || 10000;
+    this.heartbeat = options.heartbeat || true;
+    this._heartbeatTimer = null;
+    this._heartbeatSent = false;
+
+    this.reconnectCooldown = options.reconnectCooldown || 2500;
+
+    this.in()
+      .on('join', _.bindKey(this, '_ensureRoom'))
+      .on('leave', _.bindKey(this, '_removeRoom'))
+      .on('disconnect', _.bindKey(this, '_enqueueReconnect'))
+      .on('error', _.bindKey(this, '_enqueueReconnect'))
+      .on('pong', () => {
+        this._heartbeatSent = false;
+      });
+
+    this._connect();
+  }
+
+  _connect() {
+    if (this._closed) {
+      return;
+    }
+
+    this._closeSocket();
+    const socket = new WebSocket(this._formatUrl());
+    log(`created anew`);
+
+    socket.onopen = () => {
+      this._setSocket(socket);
+      if (this._heartbeatTimer) {
+        this._heartbeatTimer.start();
+      }
+    };
+
+    socket.onerror = () => {
+      log(`errored during connection`);
+      this.in().dispatch('error');
+    };
+  }
+
+  _enqueueReconnect() {
+    if (this._closed) {
+      return;
+    }
+
+    setTimeout(() => {
+      this._connect();
+    }, this.reconnectCooldown);
+  }
+
+  _closeSocket() {
+    if (this._heartbeatTimer) {
+      this._heartbeatTimer.stop();
+    }
+
+    super._closeSocket();
+  }
+
+  get heartbeat() {
+    return Boolean(this._heartbeatTimer);
+  }
+
+  set heartbeat(enable) {
+    if (enable && !this.heartbeat) {
+      this._heartbeatTimer = new Interval(this.heartbeatInterval, () => {
+        if (this._heartbeatSent) {
+          this._closeSocket();
+          return;
+        }
+
+        this._ping();
+      });
+    }
+
+    if (!enable && this.heartbeat) {
+      this._heartbeatTimer.stop();
+      this._heartbeatTimer = null;
+    }
+  }
+
+  async join(room) {
+    await this.emit('join', room);
+    return this._ensureRoom(room);
+  }
+
+  async leave(room) {
+    await this.emit('leave', room);
+    await this._removeRoom(room);
+  }
+
+  _formatUrl() {
+    const urlObject = _(Url.parse(this.url))
       .pick(['hostname', 'port', 'pathname'])
       .omitBy(_.isNil)
       .defaults({
@@ -32,94 +119,34 @@ export class SocketClient extends BaseClient {
       })
       .value();
 
-    this.url = Url.format(urlObject);
-    this.pingInterval = new Interval(this.options.timeout, _.bindKey(this, '_ping'));
+    return Url.format(urlObject);
+  }
 
-    this._ensureRoom()
-      .on('join', name => {
-        console.log('join:', name);
-        this._ensureRoom(name);
-      })
-      .on('leave', name => {
-        console.log('leave:', name);
-        this._removeRoom(name);
+  _ping() {
+    super._ping();
+    this._heartbeatSent = true;
+  }
+
+  _enqueue(type, id, data, deffered) {
+    if (deffered && this.heartbeat) {
+      this._heartbeatSent = true;
+      this._heartbeatTimer.reset();
+
+      const packet = super._enqueue(type, id, data, deffered);
+
+      packet.deferred.promise.then(arg => {
+        this._heartbeatSent = false;
+        return arg;
       });
 
-    this.on('disconnect', () => {
-      setTimeout(() => {
-        this.connect();
-      }, this.options.reconnectCooldown);
-    });
-  }
-
-  connect() {
-    this._socket = new WebSocket(this.url);
-
-    this._socket.onopen = () => {
-      this.pingInterval.start();
-      this._setSocket(this._socket);
-    };
-  }
-
-  close() {
-    this.pingInterval.stop();
-    super.close();
-  }
-
-  _findRoom(name) {
-    return _.find(this._rooms, ['name', name]);
-  }
-
-  _ensureRoom(name) {
-    let room = this._findRoom(name);
-
-    if (!room) {
-      room = new Room(this, name);
-      this._rooms.push(room);
+      return packet;
     }
 
-    return room;
-  }
-
-  _removeRoom(name) {
-    const rooms = _.remove(this._rooms, room => room.name === name);
-    rooms.forEach(room => {
-      room.eventNames().forEach(event => room.removeAllListeners(event));
-    });
-  }
-
-  in(name = null) {
-    const room = this._findRoom(name);
-    return room ? room : new FakeRoom(name);
-  }
-
-  async join(room) {
-    await this.emit('join', room);
-    return this.in(room);
-  }
-
-  leave(room) {
-    return this.emit('leave', room);
-  }
-
-  on(...args) {
-    this.in().on(...args);
-  }
-
-  /**
-   * @param {String} name
-   * @param {any} [data]
-   */
-  emit(...args) {
-    return this.in().emit(...args);
+    return super._enqueue(type, id, data, deffered);
   }
 
   _send(data, cb) {
     this._socket.send(data);
     cb(null);
-  }
-
-  _isSocketOpen() {
-    return this._socket.readyState === WebSocket.OPEN;
   }
 }

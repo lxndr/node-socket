@@ -1,4 +1,6 @@
-import _ from 'lodash';
+import debug from 'debug';
+
+export const log = debug('socket');
 
 export function deffer() {
   let resolve;
@@ -53,6 +55,7 @@ export class Interval {
     this.intervalId = null;
     this.interval = interval;
     this.cb = cb;
+    this.start();
   }
 
   start() {

@@ -14,7 +14,7 @@ export class Evented {
       this._events.set(event, listeners);
     }
 
-    listeners.add(callback(cb));
+    listeners.add(callback(this, cb));
     return this;
   }
 
@@ -45,14 +45,13 @@ export class Evented {
   }
 
   dispatch(event, data) {
-    return Promise
-      .all(
-        this._events.get(event)
-          .entries()
-          .map(listener => listener(data))
-      )
-      .then(
-        results => _.first(results)
-      );
+    const listeners = this._events.get(event);
+
+    if (listeners) {
+      const promises = Array.from(listeners).map(listener => listener(data));
+      return Promise.all(promises).then(results => _.first(results));
+    }
+
+    return Promise.resolve();
   }
 }
