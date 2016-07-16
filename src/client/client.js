@@ -9,9 +9,8 @@ import {log, Interval} from '../util';
  */
 export class SocketClient extends BaseClient {
   constructor(url, options = {}) {
-    super();
+    super(UUID.v4());
     this.url = url;
-    this.uuid = UUID.v4();
 
     this.heartbeatInterval = options.heartbeatInterval || 10000;
     this.heartbeat = options.heartbeat || true;

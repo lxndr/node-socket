@@ -30,11 +30,11 @@ export class Namespace {
         client = new Client(query.uuid);
 
         if (this.verifyClient) {
-          this.verifyClient(client, info.req, (...args) => {
-            if (args[0] === true) {
+          this.verifyClient(client, info.req, (accept, code, result) => {
+            if (accept === true) {
               this.clients.push(client);
             }
-            cb(...args);
+            cb(accept, code, result);
           });
         } else {
           this.clients.push(client);

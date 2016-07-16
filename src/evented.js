@@ -44,6 +44,13 @@ export class Evented {
     return this.addListener(event, cb);
   }
 
+  once(event, cb) {
+    return this.addListener(event, (...args) => {
+      this.removeListener(event, cb);
+      return cb(...args);
+    });
+  }
+
   dispatch(event, data) {
     const listeners = this._events.get(event);
 

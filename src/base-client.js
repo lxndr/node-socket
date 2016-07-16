@@ -10,8 +10,8 @@ const TYPE_PONG = 2;
 const TYPE_MESSAGE = 3;
 
 export class BaseClient {
-  constructor() {
-    this._uuid = null;
+  constructor(uuid) {
+    this._uuid = uuid;
     this._socket = null;
     this._queue = [];
     this._rooms = [];
@@ -21,8 +21,16 @@ export class BaseClient {
   }
 
   close() {
-    this._closeSocket();
     this._closed = true;
+    this._closeSocket();
+  }
+
+  get uuid() {
+    return this._uuid;
+  }
+
+  get connected() {
+    return Boolean(this._socket);
   }
 
   _findRoom(name) {

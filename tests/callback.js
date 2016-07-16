@@ -56,7 +56,7 @@ describe('universal callback', () => {
     return cb().should.eventually.be.rejected;
   });
 
-  it('using Promise', () => {
+  it('using a Promise', () => {
     const cb = callback(null, () => {
       return Promise.resolve(true);
     });
@@ -69,7 +69,7 @@ describe('universal callback', () => {
       cb(null, true);
     });
 
-    return cb(1).should.eventually.to.be.true;
+    return cb(1).should.eventually.be.true;
   });
 
   it('using a classic callback (error)', () => {
