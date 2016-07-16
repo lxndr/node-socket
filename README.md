@@ -13,7 +13,6 @@ Protocol:
   Client events:
 
     connect
-    reconnect
     disconnect
     close
     message

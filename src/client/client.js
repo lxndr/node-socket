@@ -20,8 +20,6 @@ export class SocketClient extends BaseClient {
     this.reconnectCooldown = options.reconnectCooldown || 2500;
 
     this.in()
-      .on('join', _.bindKey(this, '_ensureRoom'))
-      .on('leave', _.bindKey(this, '_removeRoom'))
       .on('disconnect', _.bindKey(this, '_enqueueReconnect'))
       .on('error', _.bindKey(this, '_enqueueReconnect'))
       .on('pong', () => {
@@ -33,7 +31,7 @@ export class SocketClient extends BaseClient {
 
   _connect() {
     if (this._closed) {
-      return;
+      throw new Error('Socket has been closed');
     }
 
     this._closeSocket();

@@ -28,6 +28,9 @@ export class Namespace {
         }
 
         client = new Client(query.uuid);
+        client.on('close', () => {
+          _.pull(this.clients, client);
+        });
 
         if (this.verifyClient) {
           this.verifyClient(client, info.req, (accept, code, result) => {

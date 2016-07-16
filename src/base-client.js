@@ -3,11 +3,13 @@ import json5 from 'json5';
 import {Room, FakeRoom} from './room';
 import {log, deffer} from './util';
 
+const TYPE_ACKERR = -1;
 const TYPE_ACK = 0;
-const TYPE_ACKERR = 0;
 const TYPE_PING = 1;
 const TYPE_PONG = 2;
 const TYPE_MESSAGE = 3;
+
+const {parse, stringify} = json5;
 
 export class BaseClient {
   constructor(uuid) {
@@ -122,7 +124,7 @@ export class BaseClient {
   }
 
   _parse(data) {
-    data = json5.parse(data);
+    data = parse(data);
     if (!_.isArray(data)) {
       return;
     }
@@ -130,10 +132,12 @@ export class BaseClient {
     const [type, id, ...args] = data;
 
     switch (type) {
-      case TYPE_ACK: {
+      case TYPE_ACK:
+      case TYPE_ACKERR: {
         const [packet] = _.remove(this._queue, packet => packet.id === id);
         if (packet && packet.deffered) {
-          packet.deffered.resolve(args[0]);
+          const fn = type === TYPE_ACK ? packet.deffered.resolve : packet.deffered.reject;
+          fn.call(this, args[0]);
         }
         break;
       }
@@ -144,9 +148,30 @@ export class BaseClient {
         this.in().dispatch('pong');
         break;
       case TYPE_MESSAGE: {
-        const [room, name, payload] = args;
+        const [room, event, payload] = args;
+
+        if (room === null && event === 'join') {
+          this.in()
+            .dispatch(event, payload)
+            .then(
+              () => this._ack(id),
+              err => this._ack(id, err)
+            );
+          return;
+        }
+
+        if (room === null && event === 'leave') {
+          this.in()
+            .dispatch(event, payload)
+            .then(
+              () => this._ack(id),
+              err => this._ack(id, err)
+            );
+          return;
+        }
+
         this.in(room)
-          .dispatch(name, payload)
+          .dispatch(event, payload)
           .then(
             data => this._ack(id, data),
             err => this._ack(id, err)
@@ -160,9 +185,9 @@ export class BaseClient {
 
   _ack(id, payload) {
     if (payload instanceof Error) {
-      this._enqueue(TYPE_ACKERR, id, payload.message);
+      this._enqueue(TYPE_ACKERR, id, [payload.message]);
     } else {
-      this._enqueue(TYPE_ACK, id, payload);
+      this._enqueue(TYPE_ACK, id, [payload]);
     }
   }
 
@@ -201,7 +226,7 @@ export class BaseClient {
       packet.deffered = deffer();
     }
 
-    packet.data = json5.stringify(_data);
+    packet.data = stringify(_data);
     this._queue.push(packet);
     this._flush();
     return packet;

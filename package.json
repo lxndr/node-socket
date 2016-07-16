@@ -1,6 +1,6 @@
 {
   "name": "@lxndr/socket",
-  "version": "1.0.0-alpha.1",
+  "version": "1.0.0-alpha.2",
   "description": "",
   "main": "src/server/server.js",
   "license": "MIT",
@@ -22,6 +22,7 @@
     "grunt-babel": "^6.0.0",
     "grunt-contrib-clean": "^1.0.0",
     "grunt-contrib-uglify": "^1.0.1",
+    "grunt-eslint": "^19.0.0",
     "grunt-karma": "^2.0.0",
     "grunt-mocha-test": "^0.12.7",
     "grunt-webpack": "^1.0.11",
