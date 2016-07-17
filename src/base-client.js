@@ -1,5 +1,4 @@
 import _ from 'lodash';
-import json5 from 'json5';
 import {Room, FakeRoom} from './room';
 import {log, deffer} from './util';
 
@@ -8,8 +7,6 @@ const TYPE_ACK = 0;
 const TYPE_PING = 1;
 const TYPE_PONG = 2;
 const TYPE_MESSAGE = 3;
-
-const {parse, stringify} = json5;
 
 export class BaseClient {
   constructor(uuid) {
@@ -124,7 +121,7 @@ export class BaseClient {
   }
 
   _parse(data) {
-    data = parse(data);
+    data = JSON.parse(data);
     if (!_.isArray(data)) {
       return;
     }
@@ -226,7 +223,7 @@ export class BaseClient {
       packet.deffered = deffer();
     }
 
-    packet.data = stringify(_data);
+    packet.data = JSON.stringify(_data);
     this._queue.push(packet);
     this._flush();
     return packet;
