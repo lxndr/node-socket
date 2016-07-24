@@ -2,7 +2,13 @@
 [![dependencies status](https://img.shields.io/david/lxndr/node-socket.svg?style=flat)](https://david-dm.org/lxndr/node-socket)
 [![devDependencies status](https://img.shields.io/david/dev/lxndr/node-socket.svg?style=flat)](https://david-dm.org/lxndr/node-socket#info=devDependencies)
 
-API
+**API**
+
+ServerSocket(*httpServer*, *options*)
+
+*options*
+  - *heartbeatInterval* -
+  - *timeoutInterval* -
 
 ServerSocket:
 

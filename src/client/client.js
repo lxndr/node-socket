@@ -31,7 +31,7 @@ export class SocketClient extends BaseClient {
 
   _connect() {
     if (this._closed) {
-      throw new Error('Socket has been closed');
+      return;
     }
 
     this._closeSocket();

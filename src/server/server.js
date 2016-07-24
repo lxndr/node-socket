@@ -1,10 +1,19 @@
 import _ from 'lodash';
 import {Namespace} from './namespace';
 
+/**
+ *
+ */
 export class ServerSocket {
-  constructor(httpServer) {
+  constructor(httpServer, options) {
     this.httpServer = httpServer;
     this.namespaces = [];
+
+    this.options = _.defaults({}, options, {
+      heartbeatInterval: 15000,
+      heartbeatTimeout: 10000,
+      connectionTimeout: 30000
+    });
   }
 
   /**
@@ -25,12 +34,19 @@ export class ServerSocket {
   }
 
   /**
-   * @param {String} name
    * @param {any} data
    */
-  emit(name, data) {
+  send(data) {
+    this.emit(null, data);
+  }
+
+  /**
+   * @param {String} event
+   * @param {any} data
+   */
+  emit(event, data) {
     return Promise.all(
-      this.namespaces.map(namespace => namespace.emit(name, data))
+      this.namespaces.map(namespace => namespace.emit(event, data))
     );
   }
 }

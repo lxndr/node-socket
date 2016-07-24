@@ -2,14 +2,14 @@ import _ from 'lodash';
 import {Room, FakeRoom} from './room';
 import {log, deffer} from './util';
 
-const TYPE_ACKERR = -1;
-const TYPE_ACK = 0;
-const TYPE_PING = 1;
-const TYPE_PONG = 2;
-const TYPE_MESSAGE = 3;
+const TYPE_ACKERR = 0;
+const TYPE_ACK = 1;
+const TYPE_PING = 2;
+const TYPE_PONG = 3;
+const TYPE_MESSAGE = 4;
 
 export class BaseClient {
-  constructor(uuid) {
+  constructor(uuid = null) {
     this._uuid = uuid;
     this._socket = null;
     this._queue = [];
@@ -19,17 +19,35 @@ export class BaseClient {
     this._ensureRoom(null);
   }
 
+  /**
+   * Closes the socket and releases all its resources so that garbage collector could free it.
+   * This method might emit 'close' event. Do not do anything with a closed socket.
+   */
   close() {
     this._closed = true;
+    this._rooms.forEach(room => room.removeAllListeners());
     this._closeSocket();
   }
 
+  /**
+   * Unique ID. It is generated upon socket creation.
+   * @type String
+   */
   get uuid() {
     return this._uuid;
   }
 
   get connected() {
     return Boolean(this._socket);
+  }
+
+  /**
+   * Indicated that the socket has been closed.
+   * @type Boolean
+   * @see #close
+   */
+  get closed() {
+    return this._closed;
   }
 
   _findRoom(name) {
@@ -69,6 +87,9 @@ export class BaseClient {
     return this.in().emit(name, data);
   }
 
+  /**
+   * Closes underlying native socket.
+   */
   _closeSocket() {
     if (this._socket) {
       this._socket.onopen = null;
@@ -86,7 +107,7 @@ export class BaseClient {
    * @private
    */
   _onclose(event) {
-    log(`disconnected (wasClean: ${event.wasClean}, reason: ${event.reason})`);
+    log(`disconnected (wasClean: ${event.wasClean}, code: ${event.code}, reason: ${event.reason})`);
     this._closeSocket();
 
     if (event.wasClean) {
@@ -144,40 +165,43 @@ export class BaseClient {
       case TYPE_PONG:
         this.in().dispatch('pong');
         break;
-      case TYPE_MESSAGE: {
-        const [room, event, payload] = args;
-
-        if (room === null && event === 'join') {
-          this.in()
-            .dispatch(event, payload)
-            .then(
-              () => this._ack(id),
-              err => this._ack(id, err)
-            );
-          return;
-        }
-
-        if (room === null && event === 'leave') {
-          this.in()
-            .dispatch(event, payload)
-            .then(
-              () => this._ack(id),
-              err => this._ack(id, err)
-            );
-          return;
-        }
-
-        this.in(room)
-          .dispatch(event, payload)
-          .then(
-            data => this._ack(id, data),
-            err => this._ack(id, err)
-          );
+      case TYPE_MESSAGE:
+        this._onmessage(id, ...args);
         break;
-      }
       default:
         return;
     }
+  }
+
+  _onmessage(id, room, event, payload) {
+    if (room === null && event === 'join') {
+      const roomName = payload;
+      this.in()
+        .dispatch(event, roomName)
+        .then(() => {
+          this._ensureRoom(roomName);
+          this._ack(id);
+        }, err => this._ack(id, err));
+      return;
+    }
+
+    if (room === null && event === 'leave') {
+      const roomName = payload;
+      this.in()
+        .dispatch(event, roomName)
+        .then(() => {
+          this._removeRoom(roomName);
+          this._ack(id);
+        }, err => this._ack(id, err));
+      return;
+    }
+
+    this.in(room)
+      .dispatch(event || 'message', payload)
+      .then(
+        data => this._ack(id, data),
+        err => this._ack(id, err)
+      );
   }
 
   _ack(id, payload) {
@@ -201,7 +225,7 @@ export class BaseClient {
       name = null;
     }
 
-    const packet = this._enqueue(TYPE_MESSAGE, this._packetId++, _.take(arguments, 3), true);
+    const packet = this._enqueue(TYPE_MESSAGE, this._packetId++, [room, name, payload], true);
     return packet.deffered.promise;
   }
 

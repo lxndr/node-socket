@@ -7,8 +7,16 @@ export class Room extends Evented {
     this.name = name;
   }
 
+  send(data) {
+    return this.emit(null, data);
+  }
+
   emit(event, data) {
     return this.socket._emit(this.name, event, data);
+  }
+
+  close() {
+    this.removeAllListeners();
   }
 }
 

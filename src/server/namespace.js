@@ -27,7 +27,7 @@ export class Namespace {
           return;
         }
 
-        client = new Client(query.uuid);
+        client = new Client(query.uuid, this.manager.options);
         client.on('close', () => {
           _.pull(this.clients, client);
         });
