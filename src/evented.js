@@ -51,7 +51,7 @@ export class Evented {
     });
   }
 
-  dispatch(event, data) {
+  dispatchEvent(event, data) {
     const listeners = this._events.get(event);
 
     if (listeners) {

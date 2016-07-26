@@ -12,19 +12,24 @@ export class SocketClient extends BaseClient {
     super(UUID.v4());
     this.url = url;
 
-    this.heartbeatInterval = options.heartbeatInterval || 10000;
-    this.heartbeat = options.heartbeat || true;
-    this._heartbeatTimer = null;
+    this.reconnectCooldown = options.reconnectCooldown || 5000;
+    this.heartbeatInterval = options.heartbeatInterval || 15000;
+
     this._heartbeatSent = false;
+    this._heartbeatTimer = new Interval(this.heartbeatInterval, () => {
+      if (this._heartbeatSent) {
+        this._closeSocket();
+        return;
+      }
 
-    this.reconnectCooldown = options.reconnectCooldown || 2500;
+      this._ping();
+    });
 
-    this.in()
-      .on('disconnect', _.bindKey(this, '_enqueueReconnect'))
-      .on('error', _.bindKey(this, '_enqueueReconnect'))
-      .on('pong', () => {
-        this._heartbeatSent = false;
-      });
+    this.on('disconnect', _.bindKey(this, '_enqueueReconnect'));
+    this.on('error', _.bindKey(this, '_enqueueReconnect'));
+    this.on('pong', () => {
+      this._heartbeatSent = false;
+    });
 
     this._connect();
   }
@@ -40,14 +45,12 @@ export class SocketClient extends BaseClient {
 
     socket.onopen = () => {
       this._setSocket(socket);
-      if (this._heartbeatTimer) {
-        this._heartbeatTimer.start();
-      }
+      this._heartbeatTimer.start();
     };
 
     socket.onerror = () => {
       log(`errored during connection`);
-      this.in().dispatch('error');
+      this.in().dispatchEvent('error');
     };
   }
 
@@ -62,33 +65,8 @@ export class SocketClient extends BaseClient {
   }
 
   _closeSocket() {
-    if (this._heartbeatTimer) {
-      this._heartbeatTimer.stop();
-    }
-
+    this._heartbeatTimer.stop();
     super._closeSocket();
-  }
-
-  get heartbeat() {
-    return Boolean(this._heartbeatTimer);
-  }
-
-  set heartbeat(enable) {
-    if (enable && !this.heartbeat) {
-      this._heartbeatTimer = new Interval(this.heartbeatInterval, () => {
-        if (this._heartbeatSent) {
-          this._closeSocket();
-          return;
-        }
-
-        this._ping();
-      });
-    }
-
-    if (!enable && this.heartbeat) {
-      this._heartbeatTimer.stop();
-      this._heartbeatTimer = null;
-    }
   }
 
   async join(room) {
@@ -124,12 +102,12 @@ export class SocketClient extends BaseClient {
     this._heartbeatSent = true;
   }
 
-  _enqueue(type, id, data, deffered) {
-    if (deffered && this.heartbeat) {
+  _enqueue(type, id, data, deferred) {
+    if (deferred) {
       this._heartbeatSent = true;
       this._heartbeatTimer.reset();
 
-      const packet = super._enqueue(type, id, data, deffered);
+      const packet = super._enqueue(type, id, data, deferred);
 
       packet.deferred.promise.then(arg => {
         this._heartbeatSent = false;
@@ -139,7 +117,7 @@ export class SocketClient extends BaseClient {
       return packet;
     }
 
-    return super._enqueue(type, id, data, deffered);
+    return super._enqueue(type, id, data, deferred);
   }
 
   _send(data, cb) {

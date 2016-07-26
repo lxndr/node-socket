@@ -10,6 +10,7 @@ export class ServerSocket {
     this.namespaces = [];
 
     this.options = _.defaults({}, options, {
+      handshakeTimeout: 15000,
       heartbeatInterval: 15000,
       heartbeatTimeout: 10000,
       connectionTimeout: 30000
@@ -20,6 +21,10 @@ export class ServerSocket {
    * @param {String} name
    */
   of(name) {
+    if (!name || typeof name !== 'string') {
+      throw new TypeError('argument 1 must be a string');
+    }
+
     if (_.isEmpty(name)) {
       name = null;
     }

@@ -2,10 +2,12 @@ module.exports = function (grunt) {
   require('load-grunt-tasks')(grunt);
 
   grunt.initConfig({
-    clean: [
-      'dist',
-      'lib'
-    ],
+    clean: {
+      files: [
+        'dist',
+        'lib'
+      ]
+    },
 
     eslint: {
       files: 'src/**/*.js'

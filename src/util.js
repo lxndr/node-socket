@@ -2,7 +2,7 @@ import debug from 'debug';
 
 export const log = debug('socket');
 
-export function deffer() {
+export function defer() {
   let resolve;
   let reject;
 

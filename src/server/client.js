@@ -8,16 +8,21 @@ export class Client extends BaseClient {
     super(uuid);
     this._options = options;
     this._heartbeatTimer = null;
+    this._connectionTimer = null;
   }
 
   _setSocket(socket) {
     super._setSocket(socket);
     this._resetHeartbeatTimeout();
+    this._stopConnectionTimeout();
   }
 
   _closeSocket() {
-    super._closeSocket();
-    this._stopHeartbeatTimeout();
+    if (this._socket) {
+      super._closeSocket();
+      this._stopHeartbeatTimeout();
+      this._startConnectionTimeout();
+    }
   }
 
   _parse(...args) {
@@ -42,6 +47,22 @@ export class Client extends BaseClient {
   _stopHeartbeatTimeout() {
     if (this._heartbeatTimer) {
       clearTimeout(this._heartbeatTimer);
+    }
+  }
+
+  _startConnectionTimeout() {
+    if (this._connectionTimer) {
+      clearTimeout(this._connectionTimer);
+    }
+
+    this._connectionTimer = setTimeout(() => {
+      this.close('timeout');
+    }, this._options.connectionTimeout);
+  }
+
+  _stopConnectionTimeout() {
+    if (this._connectionTimer) {
+      clearTimeout(this._connectionTimer);
     }
   }
 }

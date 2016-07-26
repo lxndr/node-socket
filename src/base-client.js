@@ -1,6 +1,7 @@
 import _ from 'lodash';
 import {Room, FakeRoom} from './room';
-import {log, deffer} from './util';
+import {Evented} from './evented';
+import {log, defer} from './util';
 
 const TYPE_ACKERR = 0;
 const TYPE_ACK = 1;
@@ -8,8 +9,11 @@ const TYPE_PING = 2;
 const TYPE_PONG = 3;
 const TYPE_MESSAGE = 4;
 
-export class BaseClient {
+const reservedEvents = ['connect', 'disconnect', 'join', 'leave', 'pong', 'close'];
+
+export class BaseClient extends Evented {
   constructor(uuid = null) {
+    super();
     this._uuid = uuid;
     this._socket = null;
     this._queue = [];
@@ -51,7 +55,7 @@ export class BaseClient {
   }
 
   _findRoom(name) {
-    return _.find(this._rooms, ['name', name]);
+    return _.find(this._rooms, {name});
   }
 
   _ensureRoom(name) {
@@ -76,7 +80,19 @@ export class BaseClient {
   }
 
   on(event, cb) {
-    this.in().on(event, cb);
+    if (_.includes(reservedEvents, event)) {
+      super.on(event, cb);
+    } else {
+      this.in().on(event, cb);
+    }
+  }
+
+  once(event, cb) {
+    if (_.includes(reservedEvents, event)) {
+      super.once(event, cb);
+    } else {
+      this.in().once(event, cb);
+    }
   }
 
   send(data) {
@@ -98,7 +114,7 @@ export class BaseClient {
       this._socket.onerror = null;
       this._socket.close();
       this._socket = null;
-      this.in().dispatch('disconnect');
+      this.dispatchEvent('disconnect');
     }
   }
 
@@ -112,7 +128,7 @@ export class BaseClient {
 
     if (event.wasClean) {
       this.close();
-      this.in().dispatch('close');
+      this.dispatchEvent('close');
     }
   }
 
@@ -134,10 +150,10 @@ export class BaseClient {
 
     this._socket.onerror = () => {
       log(`errored`);
-      this.in().dispatch('error');
+      this.dispatchEvent('error');
     };
 
-    this.in().dispatch('connect');
+    this.dispatchEvent('connect');
     this._flush();
   }
 
@@ -153,8 +169,8 @@ export class BaseClient {
       case TYPE_ACK:
       case TYPE_ACKERR: {
         const [packet] = _.remove(this._queue, packet => packet.id === id);
-        if (packet && packet.deffered) {
-          const fn = type === TYPE_ACK ? packet.deffered.resolve : packet.deffered.reject;
+        if (packet && packet.deferred) {
+          const fn = type === TYPE_ACK ? packet.deferred.resolve : packet.deferred.reject;
           fn.call(this, args[0]);
         }
         break;
@@ -163,7 +179,7 @@ export class BaseClient {
         this._pong();
         break;
       case TYPE_PONG:
-        this.in().dispatch('pong');
+        this.dispatchEvent('pong');
         break;
       case TYPE_MESSAGE:
         this._onmessage(id, ...args);
@@ -176,28 +192,24 @@ export class BaseClient {
   _onmessage(id, room, event, payload) {
     if (room === null && event === 'join') {
       const roomName = payload;
-      this.in()
-        .dispatch(event, roomName)
-        .then(() => {
-          this._ensureRoom(roomName);
-          this._ack(id);
-        }, err => this._ack(id, err));
+      this.dispatchEvent(event, roomName).then(() => {
+        this._ensureRoom(roomName);
+        this._ack(id);
+      }, err => this._ack(id, err));
       return;
     }
 
     if (room === null && event === 'leave') {
       const roomName = payload;
-      this.in()
-        .dispatch(event, roomName)
-        .then(() => {
-          this._removeRoom(roomName);
-          this._ack(id);
-        }, err => this._ack(id, err));
+      this.dispatchEvent(event, roomName).then(() => {
+        this._removeRoom(roomName);
+        this._ack(id);
+      }, err => this._ack(id, err));
       return;
     }
 
     this.in(room)
-      .dispatch(event || 'message', payload)
+      .dispatchEvent(event || 'message', payload)
       .then(
         data => this._ack(id, data),
         err => this._ack(id, err)
@@ -226,10 +238,10 @@ export class BaseClient {
     }
 
     const packet = this._enqueue(TYPE_MESSAGE, this._packetId++, [room, name, payload], true);
-    return packet.deffered.promise;
+    return packet.deferred.promise;
   }
 
-  _enqueue(type, id, data, deffered) {
+  _enqueue(type, id, data, deferred) {
     const _data = [type];
     const packet = {type, sent: false};
 
@@ -243,8 +255,8 @@ export class BaseClient {
       _data.push(...data);
     }
 
-    if (deffered) {
-      packet.deffered = deffer();
+    if (deferred) {
+      packet.deferred = defer();
     }
 
     packet.data = JSON.stringify(_data);
@@ -274,7 +286,7 @@ export class BaseClient {
       });
 
     _.remove(this._queue, packet => {
-      return packet.sent === true && !packet.deffered;
+      return packet.sent === true && !packet.deferred;
     });
   }
 }

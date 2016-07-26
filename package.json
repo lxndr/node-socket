@@ -2,9 +2,9 @@
   "name": "@lxndr/socket",
   "version": "1.0.0-alpha.3",
   "description": "",
-  "main": "src/server/server.js",
+  "main": "lib/server/server.js",
   "license": "MIT",
-  "browser": "src/client/client.js",
+  "browser": "lib/client/client.js",
   "repository": "lxndr/node-socket",
   "devDependencies": {
     "babel-eslint": "^6.1.2",
@@ -32,7 +32,7 @@
   },
   "dependencies": {
     "debug": "^2.2.0",
-    "lodash": "^4.13.1",
+    "lodash": "^4.14.0",
     "uuid": "^2.0.2",
     "ws": "^1.1.1"
   },

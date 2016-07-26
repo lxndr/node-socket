@@ -1,56 +1,81 @@
+import EventEmitter from 'events';
 import Url from 'url';
 import _ from 'lodash';
 import ws from 'ws';
 import {Client} from './client';
 import {Room} from './room';
+import {log} from '../util';
 
-export class Namespace {
+export class Namespace extends EventEmitter {
   constructor(manager, name) {
+    super();
     this.manager = manager;
     this.name = name;
     this.clients = [];
+    this._pendingClients = [];
 
     this.socket = new ws.Server({
       server: this.manager.httpServer,
       path: name,
+      clientTracking: false,
       verifyClient: (info, cb) => {
-        const query = Url.parse(info.req.url, true).query;
-
-        if (!query.uuid) {
-          cb(false, 401, 'Client did not provided UUID');
-          return;
-        }
-
-        let client = _.find(this.clients, ['uuid', query.uuid]);
-        if (client) {
-          cb(true);
-          return;
-        }
-
-        client = new Client(query.uuid, this.manager.options);
-        client.on('close', () => {
-          _.pull(this.clients, client);
-        });
-
-        if (this.verifyClient) {
-          this.verifyClient(client, info.req, (accept, code, result) => {
-            if (accept === true) {
-              this.clients.push(client);
-            }
-            cb(accept, code, result);
-          });
-        } else {
-          this.clients.push(client);
-          cb(true);
-        }
+        this._verifyClient(info, cb);
       }
     });
 
-    this.socket.on('connection', socket => {
-      const query = Url.parse(socket.upgradeReq.url, true).query;
-      const client = _.find(this.clients, ['uuid', query.uuid]);
-      client._setSocket(socket);
+    this.socket.on('connection', _.bindKey(this, '_connection'));
+  }
+
+  _verifyClient(info, cb) {
+    const uuid = _.get(Url.parse(info.req.url, true), 'query.uuid');
+
+    if (!uuid) {
+      cb(false, 401, 'Client did not provided UUID');
+      return;
+    }
+
+    let client = _.find(this.clients, {uuid});
+    if (client) {
+      cb(true);
+      return;
+    }
+
+    _.remove(this._pendingClients, {uuid});
+
+    client = new Client(uuid, this.manager.options);
+    this._pendingClients.push(client);
+
+    const timeoutId = setTimeout(() => {
+      log(`${uuid} timed out for shandshake`);
+      _.pull(this._pendingClients, client);
+    }, this.manager.options.handshakeTimeout);
+
+    client.once('connect', () => {
+      clearTimeout(timeoutId);
     });
+
+    if (this.verifyClient) {
+      this.verifyClient(client, info.req, cb);
+    } else {
+      cb(true);
+    }
+  }
+
+  _connection(socket) {
+    const uuid = _.get(Url.parse(socket.upgradeReq.url, true), 'query.uuid');
+    let client = _.find(this.clients, {uuid});
+
+    if (!client) {
+      client = _.remove(this._pendingClients, {uuid})[0];
+      client.once('close', () => {
+        _.pull(this.clients, client);
+      });
+
+      this.clients.push(client);
+      super.emit('open', client);
+    }
+
+    client._setSocket(socket);
   }
 
   /**
@@ -59,8 +84,6 @@ export class Namespace {
   in(name) {
     return new Room(this, name);
   }
-
-  on() {}
 
   emit(...args) {
     return Promise.all(
