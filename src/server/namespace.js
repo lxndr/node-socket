@@ -46,7 +46,7 @@ export class Namespace extends EventEmitter {
     this._pendingClients.push(client);
 
     const timeoutId = setTimeout(() => {
-      log(`${uuid} timed out for shandshake`);
+      log(`[${uuid}] timed out for shandshake`);
       _.pull(this._pendingClients, client);
     }, this.manager.options.handshakeTimeout);
 
@@ -71,6 +71,7 @@ export class Namespace extends EventEmitter {
         _.pull(this.clients, client);
       });
 
+      log(`[${uuid}] open`);
       this.clients.push(client);
       super.emit('open', client);
     }
@@ -85,9 +86,9 @@ export class Namespace extends EventEmitter {
     return new Room(this, name);
   }
 
-  emit(...args) {
+  emit(event, data) {
     return Promise.all(
-      this.clients.map(client => client.emit(...args))
+      this.clients.map(client => client.emit(event, data))
     );
   }
 }

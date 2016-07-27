@@ -35,10 +35,7 @@ export class Client extends BaseClient {
   }
 
   _resetHeartbeatTimeout() {
-    if (this._heartbeatTimer) {
-      clearTimeout(this._heartbeatTimer);
-    }
-
+    this._stopHeartbeatTimeout();
     this._heartbeatTimer = setTimeout(() => {
       this._closeSocket();
     }, this._options.heartbeatInterval + this._options.heartbeatTimeout);
@@ -51,10 +48,7 @@ export class Client extends BaseClient {
   }
 
   _startConnectionTimeout() {
-    if (this._connectionTimer) {
-      clearTimeout(this._connectionTimer);
-    }
-
+    this._stopConnectionTimeout();
     this._connectionTimer = setTimeout(() => {
       this.close('timeout');
     }, this._options.connectionTimeout);

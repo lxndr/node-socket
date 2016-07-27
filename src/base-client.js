@@ -137,10 +137,9 @@ export class BaseClient extends Evented {
    * @private
    */
   _setSocket(socket) {
-    log(`connected`);
-
     this._closeSocket();
     this._socket = socket;
+    log(`[${this.uuid}] connected`);
 
     this._socket.onmessage = event => {
       this._parse(event.data);
