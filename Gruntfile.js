@@ -35,22 +35,53 @@ module.exports = function (grunt) {
     },
 
     webpack: {
-      dist: {
-        entry: './src/client/client.js',
-        output: {
-          path: 'dist',
-          filename: 'socket.js',
-          libraryTarget: 'umd'
-        },
+      options: {
+        entry: './lib/client/client.js',
         progress: true,
         stats: {
           errorDetails: true
+        }
+      },
+      es5: {
+        output: {
+          path: 'dist',
+          filename: 'socket-es5.js',
+          libraryTarget: 'umd'
         },
         module: {
           loaders: [{
             test: /\.js$/,
             exclude: /(node_modules|bower_components)/,
-            loader: 'babel'
+            loader: 'babel',
+            query: {
+              presets: ['es2015'],
+              plugins: [
+                ['transform-runtime', {
+                  polyfill: true
+                }]
+              ]
+            }
+          }]
+        }
+      },
+      es6: {
+        output: {
+          path: 'dist',
+          filename: 'socket-es6.js',
+          libraryTarget: 'umd'
+        },
+        module: {
+          loaders: [{
+            test: /\.js$/,
+            exclude: /(node_modules|bower_components)/,
+            loader: 'babel',
+            query: {
+              plugins: [
+                ['transform-runtime', {
+                  polyfill: false
+                }]
+              ]
+            }
           }]
         }
       }
@@ -59,7 +90,8 @@ module.exports = function (grunt) {
     uglify: {
       dist: {
         files: {
-          'dist/socket.min.js': 'dist/socket.js'
+          'dist/socket-es5.min.js': 'dist/socket-es5.js',
+          'dist/socket-es6.min.js': 'dist/socket-es6.js'
         }
       },
       options: {
@@ -75,8 +107,9 @@ module.exports = function (grunt) {
   grunt.registerTask('default', [
     'clean',
     'babel',
-    'webpack:dist',
-    'uglify:dist'
+    'webpack:es5',
+    'webpack:es6',
+    'uglify'
   ]);
 
   grunt.registerTask('lint', ['eslint']);
