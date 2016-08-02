@@ -31,6 +31,7 @@ export class SocketClient extends BaseClient {
       this._heartbeatSent = false;
     });
 
+    this.alwaysReconnectOnDisconnect = true; /* FIXME */
     this._connect();
   }
 
@@ -69,16 +70,14 @@ export class SocketClient extends BaseClient {
     super._closeSocket();
   }
 
-  join(room) {
-    return this.emit('join', room).then(() => {
-      return this._ensureRoom(room);
-    });
+  async join(room) {
+    await this.emit('join', room);
+    return this._ensureRoom(room);
   }
 
-  leave(room) {
-    return this.emit('leave', room).then(() => {
-      return this._removeRoom(room);
-    });
+  async leave(room) {
+    await this.emit('leave', room);
+    this._removeRoom(room);
   }
 
   _formatUrl() {

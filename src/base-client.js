@@ -9,7 +9,7 @@ const TYPE_PING = 2;
 const TYPE_PONG = 3;
 const TYPE_MESSAGE = 4;
 
-const reservedEvents = ['connect', 'disconnect', 'join', 'leave', 'pong', 'close'];
+const reservedEvents = ['open', 'connect', 'disconnect', 'join', 'leave', 'pong', 'close'];
 
 export class BaseClient extends Evented {
   constructor(uuid = null) {
@@ -20,6 +20,7 @@ export class BaseClient extends Evented {
     this._rooms = [];
     this._packetId = 0;
     this._closed = false;
+    this._ackPromise = Promise.resolve();
     this._ensureRoom(null);
   }
 
@@ -28,9 +29,13 @@ export class BaseClient extends Evented {
    * This method might emit 'close' event. Do not do anything with a closed socket.
    */
   close() {
-    this._closed = true;
-    this._rooms.forEach(room => room.removeAllListeners());
-    this._closeSocket();
+    if (!this._closed) {
+      this._ackPromise.then(() => {
+        this._closed = true;
+        this._rooms.forEach(room => room.removeAllListeners());
+        this._closeSocket();
+      });
+    }
   }
 
   /**
@@ -126,7 +131,7 @@ export class BaseClient extends Evented {
     log(`disconnected (wasClean: ${event.wasClean}, code: ${event.code}, reason: ${event.reason})`);
     this._closeSocket();
 
-    if (event.wasClean) {
+    if (event.wasClean && !this.alwaysReconnectOnDisconnect) {
       this.close();
       this.dispatchEvent('close');
     }
@@ -189,30 +194,30 @@ export class BaseClient extends Evented {
   }
 
   _onmessage(id, room, event, payload) {
-    if (room === null && event === 'join') {
-      const roomName = payload;
-      this.dispatchEvent(event, roomName).then(() => {
-        this._ensureRoom(roomName);
-        this._ack(id);
-      }, err => this._ack(id, err));
-      return;
-    }
+    this._ackPromise = this._ackPromise.then(async () => {
+      try {
+        if (room === null && event === 'join') {
+          const roomName = payload;
+          await this.dispatchEvent(event, roomName);
+          this._ensureRoom(roomName);
+          this._ack(id);
+          return;
+        }
 
-    if (room === null && event === 'leave') {
-      const roomName = payload;
-      this.dispatchEvent(event, roomName).then(() => {
-        this._removeRoom(roomName);
-        this._ack(id);
-      }, err => this._ack(id, err));
-      return;
-    }
+        if (room === null && event === 'leave') {
+          const roomName = payload;
+          await this.dispatchEvent(event, roomName);
+          this._removeRoom(roomName);
+          this._ack(id);
+          return;
+        }
 
-    this.in(room)
-      .dispatchEvent(event || 'message', payload)
-      .then(
-        data => this._ack(id, data),
-        err => this._ack(id, err)
-      );
+        const response = await this.in(room).dispatchEvent(event || 'message', payload);
+        this._ack(id, response);
+      } catch (err) {
+        this._ack(id, err);
+      }
+    });
   }
 
   _ack(id, payload) {
@@ -272,14 +277,10 @@ export class BaseClient extends Evented {
     _(this._queue)
       .filter({sent: false})
       .each(packet => {
+        packet.sent = true;
         this._send(packet.data, err => {
-          packet.sent = true;
-
-          if (err) {
-            if (packet.deferred) {
-              packet.deferred.reject(err);
-            }
-            return;
+          if (err && packet.deferred) {
+            packet.deferred.reject(err);
           }
         });
       });

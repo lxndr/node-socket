@@ -1,12 +1,12 @@
-import EventEmitter from 'events';
 import Url from 'url';
 import _ from 'lodash';
 import ws from 'ws';
 import {Client} from './client';
 import {Room} from './room';
+import {Evented} from '../evented';
 import {log} from '../util';
 
-export class Namespace extends EventEmitter {
+export class Namespace extends Evented {
   constructor(manager, name) {
     super();
     this.manager = manager;
@@ -73,7 +73,8 @@ export class Namespace extends EventEmitter {
 
       log(`[${uuid}] open`);
       this.clients.push(client);
-      super.emit('open', client);
+      this.dispatchEvent('open', client);
+      client.dispatchEvent('open');
     }
 
     client._setSocket(socket);

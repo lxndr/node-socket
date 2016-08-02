@@ -34,10 +34,7 @@ export function promiseFromCallback(cb) {
 export function callback(self, fn) {
   return function (...args) {
     if (fn.length <= 1) {
-      return new Promise(resolve => {
-        const ret = fn.apply(self, args);
-        resolve(ret);
-      });
+      return Promise.resolve(fn.apply(self, args));
     }
 
     if (args.length !== fn.length - 1) {
