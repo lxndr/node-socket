@@ -1,10 +1,10 @@
 {
   "name": "@lxndr/socket",
-  "version": "1.0.0-alpha.4",
+  "version": "1.0.0-alpha.5",
   "description": "",
   "main": "lib/server/server.js",
   "license": "MIT",
-  "browser": "lib/client/client.js",
+  "browser": "lib/browser-client.js",
   "repository": "lxndr/node-socket",
   "devDependencies": {
     "babel-eslint": "^6.1.2",
@@ -34,6 +34,7 @@
     "babel-runtime": "^6.11.6",
     "debug": "^2.2.0",
     "lodash": "^4.14.1",
+    "mixwith": "^0.1.1",
     "uuid": "^2.0.2",
     "ws": "^1.1.1"
   },

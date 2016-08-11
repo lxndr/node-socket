@@ -1,10 +1,16 @@
 import Url from 'url';
 import _ from 'lodash';
 import ws from 'ws';
-import {Client} from './client';
-import {Room} from './room';
+import {mix} from 'mixwith';
+import BaseClient from '../base-client';
+import NodejsMixin from '../mixins/nodejs';
+import HeartbeatTimeoutMixin from '../mixins/heartbeat-timeout';
+import ConnectionTimeoutMixin from '../mixins/connection-timeout';
 import {Evented} from '../evented';
+import {Room} from './room';
 import {log} from '../util';
+
+class Client extends mix(BaseClient).with(NodejsMixin, HeartbeatTimeoutMixin, ConnectionTimeoutMixin) {}
 
 export class Namespace extends Evented {
   constructor(manager, name) {
@@ -42,13 +48,13 @@ export class Namespace extends Evented {
 
     _.remove(this._pendingClients, {uuid});
 
-    client = new Client(uuid, this.manager.options);
+    client = new Client(uuid, this.manager._options);
     this._pendingClients.push(client);
 
     const timeoutId = setTimeout(() => {
       log(`[${uuid}] timed out for shandshake`);
       _.pull(this._pendingClients, client);
-    }, this.manager.options.handshakeTimeout);
+    }, this.manager._options.handshakeTimeout);
 
     client.once('connect', () => {
       clearTimeout(timeoutId);
@@ -77,7 +83,7 @@ export class Namespace extends Evented {
       client.dispatchEvent('open');
     }
 
-    client._setSocket(socket);
+    client._onconnect(socket);
   }
 
   /**

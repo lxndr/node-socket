@@ -9,12 +9,16 @@ const TYPE_PING = 2;
 const TYPE_PONG = 3;
 const TYPE_MESSAGE = 4;
 
-const reservedEvents = ['open', 'connect', 'disconnect', 'join', 'leave', 'pong', 'close'];
+export const CLOSE_REPLACED = 3001;
+export const CLOSE_TIMEOUT = 3002;
 
-export class BaseClient extends Evented {
-  constructor(uuid = null) {
+const reservedEvents = ['open', 'connect', 'disconnect', 'beforeJoin', 'join', 'leave', 'pong', 'close'];
+
+export default class BaseClient extends Evented {
+  constructor(uuid = null, options = {}) {
     super();
     this._uuid = uuid;
+    this._options = options;
     this._socket = null;
     this._queue = [];
     this._rooms = [];
@@ -33,7 +37,9 @@ export class BaseClient extends Evented {
       this._ackPromise.then(() => {
         this._closed = true;
         this._rooms.forEach(room => room.removeAllListeners());
-        this._closeSocket();
+        this._disconnect();
+        this._onclose();
+        this.dispatchEvent('close');
       });
     }
   }
@@ -110,16 +116,17 @@ export class BaseClient extends Evented {
 
   /**
    * Closes underlying native socket.
+   * @private
    */
-  _closeSocket() {
+  _disconnect(code, reason) {
     if (this._socket) {
       this._socket.onopen = null;
       this._socket.onmessage = null;
       this._socket.onclose = null;
       this._socket.onerror = null;
-      this._socket.close();
+      this._socket.close(code, reason);
       this._socket = null;
-      this.dispatchEvent('disconnect');
+      this._ondisconnect(code, reason);
     }
   }
 
@@ -127,22 +134,42 @@ export class BaseClient extends Evented {
    * onclose event handler for native socket
    * @private
    */
-  _onclose(event) {
-    log(`disconnected (wasClean: ${event.wasClean}, code: ${event.code}, reason: ${event.reason})`);
-    this._closeSocket();
+  _ondisconnect(code, reason) {
+    log(`[${this.uuid}] disconnected (code: ${code}, reason: ${reason})`);
 
-    if (event.wasClean && !this.alwaysReconnectOnDisconnect) {
-      this.close();
-      this.dispatchEvent('close');
+    if (this._socket) {
+      this._socket.onopen = null;
+      this._socket.onmessage = null;
+      this._socket.onclose = null;
+      this._socket.onerror = null;
+      this._socket = null;
     }
+
+    this.dispatchEvent('disconnect', {code, reason});
+
+    if (code === 1000) {
+      this.close();
+    }
+  }
+
+  _onclose() {
+    log(`[${this.uuid}] closed`);
+  }
+
+  _onpong() {
+  }
+
+  _onerror(err) {
+    log(`[${this.uuid}] errored: ${err.message}`);
+    this.dispatchEvent('error', err);
   }
 
   /**
    * prepares open native socket
    * @private
    */
-  _setSocket(socket) {
-    this._closeSocket();
+  _onconnect(socket) {
+    this._disconnect(CLOSE_REPLACED, 'replaced');
     this._socket = socket;
     log(`[${this.uuid}] connected`);
 
@@ -150,11 +177,12 @@ export class BaseClient extends Evented {
       this._parse(event.data);
     };
 
-    this._socket.onclose = _.bindKey(this, '_onclose');
+    this._socket.onclose = event => {
+      this._ondisconnect(event.code, event.reason);
+    };
 
     this._socket.onerror = () => {
-      log(`errored`);
-      this.dispatchEvent('error');
+      this._onerror();
     };
 
     this.dispatchEvent('connect');
@@ -183,6 +211,7 @@ export class BaseClient extends Evented {
         this._pong();
         break;
       case TYPE_PONG:
+        this._onpong();
         this.dispatchEvent('pong');
         break;
       case TYPE_MESSAGE:
@@ -288,5 +317,8 @@ export class BaseClient extends Evented {
     _.remove(this._queue, packet => {
       return packet.sent === true && !packet.deferred;
     });
+  }
+
+  _send() {
   }
 }

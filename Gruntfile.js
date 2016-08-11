@@ -2,6 +2,8 @@ module.exports = function (grunt) {
   require('load-grunt-tasks')(grunt);
 
   grunt.initConfig({
+    pkg: grunt.file.readJSON('package.json'),
+
     clean: {
       files: [
         'dist',
@@ -36,10 +38,15 @@ module.exports = function (grunt) {
 
     webpack: {
       options: {
-        entry: './lib/client/client.js',
+        entry: './<%= pkg.browser %>',
         progress: true,
         stats: {
           errorDetails: true
+        },
+        resolve: {
+          alias: {
+            mixwith: 'mixwith/src/mixwith.js'
+          }
         }
       },
       es5: {
@@ -50,15 +57,17 @@ module.exports = function (grunt) {
         },
         module: {
           loaders: [{
-            test: /\.js$/,
-            exclude: /(node_modules|bower_components)/,
             loader: 'babel',
+            test: /\.js$/,
+            include: [
+              './lib',
+              './node_modules/mixwith'
+            ],
             query: {
+              babelrc: false,
               presets: ['es2015'],
               plugins: [
-                ['transform-runtime', {
-                  polyfill: true
-                }]
+                'transform-runtime'
               ]
             }
           }]
@@ -72,10 +81,14 @@ module.exports = function (grunt) {
         },
         module: {
           loaders: [{
-            test: /\.js$/,
-            exclude: /(node_modules|bower_components)/,
             loader: 'babel',
+            test: /\.js$/,
+            include: [
+              './lib',
+              './node_modules/mixwith'
+            ],
             query: {
+              babelrc: false,
               plugins: [
                 ['transform-runtime', {
                   polyfill: false
@@ -90,8 +103,7 @@ module.exports = function (grunt) {
     uglify: {
       dist: {
         files: {
-          'dist/socket-es5.min.js': 'dist/socket-es5.js',
-          'dist/socket-es6.min.js': 'dist/socket-es6.js'
+          'dist/socket-es5.min.js': 'dist/socket-es5.js'
         }
       },
       options: {

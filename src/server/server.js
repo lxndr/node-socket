@@ -9,7 +9,7 @@ export class ServerSocket {
     this.httpServer = httpServer;
     this.namespaces = [];
 
-    this.options = _.defaults({}, options, {
+    this._options = _.defaults({}, options, {
       handshakeTimeout: 15000,
       heartbeatInterval: 15000,
       heartbeatTimeout: 10000,
