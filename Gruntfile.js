@@ -38,7 +38,7 @@ module.exports = function (grunt) {
 
     webpack: {
       options: {
-        entry: './<%= pkg.browser %>',
+        entry: './<%= pkg.webpack %>',
         progress: true,
         stats: {
           errorDetails: true
@@ -60,13 +60,14 @@ module.exports = function (grunt) {
             loader: 'babel',
             test: /\.js$/,
             include: [
-              './lib',
-              './node_modules/mixwith'
+              'src',
+              'node_modules/mixwith'
             ],
             query: {
               babelrc: false,
               presets: ['es2015'],
               plugins: [
+                'transform-async-to-generator',
                 'transform-runtime'
               ]
             }
@@ -84,12 +85,14 @@ module.exports = function (grunt) {
             loader: 'babel',
             test: /\.js$/,
             include: [
-              './lib',
-              './node_modules/mixwith'
+              'src',
+              'node_modules/mixwith'
             ],
             query: {
               babelrc: false,
               plugins: [
+                'transform-es2015-modules-commonjs',
+                'transform-async-to-generator',
                 ['transform-runtime', {
                   polyfill: false
                 }]
