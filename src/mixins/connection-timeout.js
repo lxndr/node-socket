@@ -17,9 +17,17 @@ export default superclass => class ConnectionTimeoutMixin extends superclass {
     this._stopConnectionTimeout();
   }
 
-  _ondisconnect(...args) {
-    super._ondisconnect(...args);
-    this._startConnectionTimeout();
+  _ondisconnect(code, reason) {
+    super._ondisconnect(code, reason);
+
+    if (code > 1001) {
+      this._startConnectionTimeout();
+    }
+  }
+
+  _onclose() {
+    super._onclose();
+    this._stopConnectionTimeout();
   }
 
   _startConnectionTimeout() {
@@ -32,6 +40,7 @@ export default superclass => class ConnectionTimeoutMixin extends superclass {
   _stopConnectionTimeout() {
     if (this._connectionTimeoutId) {
       clearTimeout(this._connectionTimeoutId);
+      this._connectionTimeoutId = null;
     }
   }
 };

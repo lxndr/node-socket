@@ -32,15 +32,15 @@ export default class BaseClient extends Evented {
    * Closes the socket and releases all its resources so that garbage collector could free it.
    * This method might emit 'close' event. Do not do anything with a closed socket.
    */
-  close() {
+  async close() {
     if (!this._closed) {
-      this._ackPromise.then(() => {
-        this._closed = true;
-        this._rooms.forEach(room => room.removeAllListeners());
-        this._disconnect();
-        this._onclose();
-        this.dispatchEvent('close');
-      });
+      await this._ackPromise;
+      this._closed = true;
+      this._rooms.forEach(room => room.removeAllListeners());
+      this._disconnect();
+      this._onclose();
+      await this.dispatchEvent('close');
+      this.removeAllListeners();
     }
   }
 
@@ -147,7 +147,7 @@ export default class BaseClient extends Evented {
 
     this.dispatchEvent('disconnect', {code, reason});
 
-    if (code === 1000) {
+    if (code === 1000 || code === 1001) {
       this.close();
     }
   }

@@ -42,6 +42,7 @@ export default superclass => class HeartbeatTimeoutMixin extends superclass {
   _stopHeartbeatTimeout() {
     if (this._heartbeatTimeoutId) {
       clearTimeout(this._heartbeatTimeoutId);
+      this._heartbeatTimeoutId = null;
     }
   }
 };

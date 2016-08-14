@@ -1,12 +1,12 @@
 {
   "name": "@lxndr/socket",
-  "version": "1.0.0-alpha.5",
+  "version": "1.0.0-alpha.7",
   "description": "",
   "main": "lib/server/server.js",
   "license": "MIT",
   "browser": "dist/socket-es5.min.js",
   "repository": "lxndr/node-socket",
-  "webpack": "src/browser-client.js",
+  "webpack": "lib/browser-client.js",
   "devDependencies": {
     "babel-eslint": "^6.1.2",
     "babel-loader": "^6.2.4",

@@ -60,7 +60,7 @@ module.exports = function (grunt) {
             loader: 'babel',
             test: /\.js$/,
             include: [
-              'src',
+              'lib',
               'node_modules/mixwith'
             ],
             query: {
@@ -85,13 +85,12 @@ module.exports = function (grunt) {
             loader: 'babel',
             test: /\.js$/,
             include: [
-              'src',
+              'lib',
               'node_modules/mixwith'
             ],
             query: {
               babelrc: false,
               plugins: [
-                'transform-es2015-modules-commonjs',
                 'transform-async-to-generator',
                 ['transform-runtime', {
                   polyfill: false

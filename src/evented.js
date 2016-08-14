@@ -51,14 +51,13 @@ export class Evented {
     });
   }
 
-  dispatchEvent(event, data) {
+  async dispatchEvent(event, data) {
     const listeners = this._events.get(event);
 
     if (listeners) {
       const promises = Array.from(listeners).map(listener => listener(data));
-      return Promise.all(promises).then(results => _.first(results));
+      const results = await Promise.all(promises);
+      return _.first(results);
     }
-
-    return Promise.resolve();
   }
 }
