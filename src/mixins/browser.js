@@ -1,5 +1,6 @@
+/* eslint-env browser */
+
 import Url from 'url';
-import _ from 'lodash';
 import {CLOSE_REPLACED} from '../base-client';
 import {log} from '../util';
 
@@ -13,7 +14,7 @@ export default superclass => class BrowserMixin extends superclass {
 
     const url = this._formatUrl();
     const socket = new WebSocket(url);
-    log(`[${this.uuid}] created anew`);
+    log(`[${this.id}] created anew`);
 
     socket.onopen = () => {
       this._onconnect(socket);
@@ -25,19 +26,19 @@ export default superclass => class BrowserMixin extends superclass {
   }
 
   _formatUrl() {
-    const urlObject = _(Url.parse(this.url))
-      .pick(['hostname', 'port', 'pathname'])
-      .omitBy(_.isNil)
-      .defaults({
-        protocol: location.protocol === 'https:' ? 'wss' : 'ws',
-        slashes: true,
-        hostname: location.hostname,
-        port: location.port,
-        query: {
-          uuid: this.uuid
-        }
-      })
-      .value();
+    const {hostname, port, pathname, query} = Url.parse(this.url, true);
+
+    const urlObject = {
+      protocol: location.protocol === 'https:' ? 'wss' : 'ws',
+      slashes: true,
+      hostname: hostname || location.hostname,
+      port: port || location.port,
+      pathname,
+      query: {
+        ...query,
+        id: this.id
+      }
+    };
 
     return Url.format(urlObject);
   }

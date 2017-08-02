@@ -1,4 +1,5 @@
 import _ from 'lodash';
+import invariant from 'invariant';
 
 export default superclass => class ReconnectMixin extends superclass {
   constructor(...args) {
@@ -10,9 +11,7 @@ export default superclass => class ReconnectMixin extends superclass {
       alwaysReconnect: true
     });
 
-    if (!('_connect' in this)) {
-      throw new TypeError('ReconnectMixin could not find _connect() method');
-    }
+    invariant(typeof this._connect === 'function', 'ReconnectMixin could not find _connect() method');
   }
 
   _ondisconnect(...args) {

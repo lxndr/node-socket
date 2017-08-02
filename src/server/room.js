@@ -8,9 +8,9 @@ export class Room {
 
   emit(...args) {
     return Promise.all(
-      this.namespace.clients.filter(client => {
-        return _.isEqual(client.room, this);
-      }).map(client => client.emit(...args))
+      this.namespace.clients
+        .filter(client => _.isEqual(client.room, this))
+        .map(client => client.emit(...args))
     );
   }
 }

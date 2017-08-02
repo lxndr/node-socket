@@ -9,33 +9,27 @@ export class ServerSocket {
     this.httpServer = httpServer;
     this.namespaces = [];
 
-    this._options = _.defaults({}, options, {
+    this._options = {
       handshakeTimeout: 15000,
       heartbeatInterval: 15000,
       heartbeatTimeout: 10000,
-      connectionTimeout: 30000
-    });
+      connectionTimeout: 30000,
+      ...options
+    };
   }
 
   /**
    * @param {String} name
    */
-  of(name) {
-    if (!name || typeof name !== 'string') {
-      throw new TypeError('argument 1 must be a string');
+  of(name = null) {
+    let ns = _.find(this.namespaces, {name});
+
+    if (!ns) {
+      ns = new Namespace(this, name);
+      this.namespaces.push(ns);
     }
 
-    if (_.isEmpty(name)) {
-      name = null;
-    }
-
-    let server = _.find(this.namespaces, {name});
-    if (!server) {
-      server = new Namespace(this, name);
-      this.namespaces.push(server);
-    }
-
-    return server;
+    return ns;
   }
 
   /**

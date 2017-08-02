@@ -14,10 +14,13 @@ export const CLOSE_TIMEOUT = 3002;
 
 const reservedEvents = ['open', 'connect', 'disconnect', 'beforeJoin', 'join', 'leave', 'pong', 'close'];
 
+/**
+ * @abstract
+ */
 export default class BaseClient extends Evented {
-  constructor(uuid = null, options = {}) {
+  constructor(id = null, options = {}) {
     super();
-    this._uuid = uuid;
+    this._id = id;
     this._options = options;
     this._socket = null;
     this._queue = [];
@@ -48,8 +51,8 @@ export default class BaseClient extends Evented {
    * Unique ID. It is generated upon socket creation.
    * @type String
    */
-  get uuid() {
-    return this._uuid;
+  get id() {
+    return this._id;
   }
 
   get connected() {
@@ -57,7 +60,7 @@ export default class BaseClient extends Evented {
   }
 
   /**
-   * Indicated that the socket has been closed.
+   * Indicates that the socket has been closed.
    * @type Boolean
    * @see #close
    */
@@ -131,11 +134,11 @@ export default class BaseClient extends Evented {
   }
 
   /**
-   * onclose event handler for native socket
+   * 'onclose' event handler for native socket
    * @private
    */
   _ondisconnect(code, reason) {
-    log(`[${this.uuid}] disconnected (code: ${code}, reason: ${reason})`);
+    log(`[${this.id}] disconnected (code: ${code}, reason: ${reason})`);
 
     if (this._socket) {
       this._socket.onopen = null;
@@ -153,25 +156,25 @@ export default class BaseClient extends Evented {
   }
 
   _onclose() {
-    log(`[${this.uuid}] closed`);
+    log(`[${this.id}] closed`);
   }
 
   _onpong() {
   }
 
   _onerror(err) {
-    log(`[${this.uuid}] errored: ${err.message}`);
+    log(`[${this.id}] errored: ${err.message}`);
     this.dispatchEvent('error', err);
   }
 
   /**
-   * prepares open native socket
+   * Prepares open native socket.
    * @private
    */
   _onconnect(socket) {
     this._disconnect(CLOSE_REPLACED, 'replaced');
     this._socket = socket;
-    log(`[${this.uuid}] connected`);
+    log(`[${this.id}] connected`);
 
     this._socket.onmessage = event => {
       this._parse(event.data);
@@ -218,7 +221,7 @@ export default class BaseClient extends Evented {
         this._onmessage(id, ...args);
         break;
       default:
-        return;
+        break;
     }
   }
 

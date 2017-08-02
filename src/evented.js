@@ -20,6 +20,7 @@ export class Evented {
 
   removeListener(event, cb) {
     const listeners = this._events.get(event);
+
     if (listeners) {
       listeners.delete(cb);
       if (listeners.size === 0) {

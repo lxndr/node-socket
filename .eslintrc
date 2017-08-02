@@ -1,5 +1,1 @@
-extends: xo/esnext
-
-rules:
-  indent: [error, 2, {SwitchCase: 1}]
-  max-lines: [error, {max: 300, skipBlankLines: true, skipComments: true}]
+extends: xo-space/esnext

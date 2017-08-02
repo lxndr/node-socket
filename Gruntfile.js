@@ -1,3 +1,5 @@
+const path = require('path');
+
 module.exports = function (grunt) {
   require('load-grunt-tasks')(grunt);
 
@@ -26,6 +28,16 @@ module.exports = function (grunt) {
     },
 
     babel: {
+      options: {
+        presets: [
+          ['env', {
+            targets: {
+              node: 6
+            }
+          }]
+        ],
+        plugins: ['transform-object-rest-spread']
+      },
       dist: {
         files: [{
           expand: true,
@@ -39,10 +51,6 @@ module.exports = function (grunt) {
     webpack: {
       options: {
         entry: './<%= pkg.webpack %>',
-        progress: true,
-        stats: {
-          errorDetails: true
-        },
         resolve: {
           alias: {
             mixwith: 'mixwith/src/mixwith.js'
@@ -51,52 +59,37 @@ module.exports = function (grunt) {
       },
       es5: {
         output: {
-          path: 'dist',
+          path: path.resolve(__dirname, 'dist'),
           filename: 'socket-es5.js',
           libraryTarget: 'umd'
         },
         module: {
-          loaders: [{
-            loader: 'babel',
+          rules: [{
             test: /\.js$/,
             include: [
-              'lib',
-              'node_modules/mixwith'
+              path.resolve(__dirname, 'node_modules/mixwith'),
+              path.resolve(__dirname, 'src')
             ],
-            query: {
-              babelrc: false,
-              presets: ['es2015'],
-              plugins: [
-                'transform-async-to-generator',
-                'transform-runtime'
-              ]
-            }
-          }]
-        }
-      },
-      es6: {
-        output: {
-          path: 'dist',
-          filename: 'socket-es6.js',
-          libraryTarget: 'umd'
-        },
-        module: {
-          loaders: [{
-            loader: 'babel',
-            test: /\.js$/,
-            include: [
-              'lib',
-              'node_modules/mixwith'
-            ],
-            query: {
-              babelrc: false,
-              plugins: [
-                'transform-async-to-generator',
-                ['transform-runtime', {
-                  polyfill: false
-                }]
-              ]
-            }
+            use: [{
+              loader: 'babel-loader',
+              options: {
+                babelrc: false,
+                compact: false,
+                presets: [
+                  ['env', {
+                    modules: false,
+                    uglify: true,
+                    targets: {
+                      ie: 11
+                    }
+                  }]
+                ],
+                plugins: [
+                  require('babel-plugin-transform-object-rest-spread'),
+                  require('babel-plugin-transform-node-env-inline')
+                ]
+              }
+            }]
           }]
         }
       }
@@ -122,7 +115,6 @@ module.exports = function (grunt) {
     'clean',
     'babel',
     'webpack:es5',
-    'webpack:es6',
     'uglify'
   ]);
 

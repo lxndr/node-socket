@@ -25,34 +25,37 @@ export class Namespace extends Evented {
       path: name,
       clientTracking: false,
       verifyClient: (info, cb) => {
-        this._verifyClient(info, cb);
+        this._verifyClient(info).then(() => {
+          cb(true);
+        }, err => {
+          cb(false, 401, err.message);
+        });
       }
     });
 
     this.socket.on('connection', _.bindKey(this, '_connection'));
   }
 
-  _verifyClient(info, cb) {
-    const uuid = _.get(Url.parse(info.req.url, true), 'query.uuid');
+  async _verifyClient(info) {
+    const id = Url.parse(info.req.url, true).query.id;
 
-    if (!uuid) {
-      cb(false, 401, 'Client did not provided UUID');
-      return;
+    if (!id) {
+      throw new Error('Client did not provided ID');
     }
 
-    let client = _.find(this.clients, {uuid});
+    let client = _.find(this.clients, {id});
+
     if (client) {
-      cb(true);
       return;
     }
 
-    _.remove(this._pendingClients, {uuid});
+    _.remove(this._pendingClients, {id});
 
-    client = new Client(uuid, this.manager._options);
+    client = new Client(id, this.manager._options);
     this._pendingClients.push(client);
 
     const timeoutId = setTimeout(() => {
-      log(`[${uuid}] timed out for shandshake`);
+      log(`[${id}] timed out for shandshake`);
       _.pull(this._pendingClients, client);
     }, this.manager._options.handshakeTimeout);
 
@@ -61,23 +64,21 @@ export class Namespace extends Evented {
     });
 
     if (this.verifyClient) {
-      this.verifyClient(client, info.req, cb);
-    } else {
-      cb(true);
+      await this.verifyClient(client, info.req);
     }
   }
 
-  _connection(socket) {
-    const uuid = _.get(Url.parse(socket.upgradeReq.url, true), 'query.uuid');
-    let client = _.find(this.clients, {uuid});
+  _connection(socket, req) {
+    const id = Url.parse(req.url, true).query.id;
+    let client = _.find(this.clients, {id});
 
     if (!client) {
-      client = _.remove(this._pendingClients, {uuid})[0];
+      client = _.remove(this._pendingClients, {id})[0];
       client.once('close', () => {
         _.pull(this.clients, client);
       });
 
-      log(`[${uuid}] open`);
+      log(`[${id}] open`);
       this.clients.push(client);
       this.dispatchEvent('open', client);
       client.dispatchEvent('open');

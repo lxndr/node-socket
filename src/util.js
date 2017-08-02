@@ -16,18 +16,14 @@ export function defer() {
 
 export function promiseFromCallback(cb) {
   return new Promise((resolve, reject) => {
-    try {
-      cb((err, value) => {
-        if (err) {
-          reject(err);
-          return;
-        }
+    cb((err, value) => {
+      if (err) {
+        reject(err);
+        return;
+      }
 
-        resolve(value);
-      });
-    } catch (err) {
-      reject(err);
-    }
+      resolve(value);
+    });
   });
 }
 
@@ -62,7 +58,7 @@ export class Interval {
   }
 
   stop() {
-    if (this.timeoutId) {
+    if (this.intervalId) {
       clearInterval(this.intervalId);
     }
   }
