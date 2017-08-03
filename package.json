@@ -10,12 +10,12 @@
   "devDependencies": {
     "babel-core": "^6.25.0",
     "babel-loader": "^7.1.1",
+    "babel-plugin-lodash": "^3.2.11",
     "babel-plugin-transform-node-env-inline": "^0.1.1",
-    "babel-plugin-transform-object-rest-spread": "^6.23.0",
     "babel-preset-env": "^1.6.0",
     "chai": "^4.1.0",
     "chai-as-promised": "^7.1.1",
-    "eslint": "^4.2.0",
+    "eslint": "^4.3.0",
     "eslint-config-xo-space": "^0.16.0",
     "grunt": "^1.0.1",
     "grunt-babel": "^6.0.0",
@@ -25,19 +25,17 @@
     "grunt-mocha-test": "^0.13.2",
     "grunt-webpack": "^3.0.2",
     "load-grunt-tasks": "^3.5.2",
-    "mocha": "^3.4.2",
-    "uglify-js": "^3.0.24",
-    "webpack": "^3.3.0"
+    "lodash-webpack-plugin": "^0.11.4",
+    "mocha": "^3.5.0",
+    "uglify-js": "^3.0.27",
+    "webpack": "^3.4.1"
   },
   "dependencies": {
-    "babel-preset-angular2": "0.0.2",
-    "babel-preset-react": "^6.24.1",
     "debug": "^2.6.8",
-    "invariant": "^2.2.2",
     "lodash": "^4.17.4",
     "mixwith": "^0.1.1",
     "uuid": "^3.1.0",
-    "ws": "^3.0.0"
+    "ws": "^3.1.0"
   },
   "scripts": {
     "prepublish": "grunt clean && grunt",

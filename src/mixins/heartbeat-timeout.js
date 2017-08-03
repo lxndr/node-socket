@@ -1,20 +1,15 @@
+import _ from 'lodash';
 import {CLOSE_TIMEOUT} from '../base-client';
-
-const defaultHeartbeatInterval = 15000;
-const defaultHeartbeatTimeout = 10000;
 
 export default superclass => class HeartbeatTimeoutMixin extends superclass {
   constructor(...args) {
     super(...args);
     this._heartbeatTimeoutId = null;
 
-    if (!this._options.heartbeatInterval) {
-      this._options.heartbeatInterval = defaultHeartbeatInterval;
-    }
-
-    if (!this._options.heartbeatTimeout) {
-      this._options.heartbeatTimeout = defaultHeartbeatTimeout;
-    }
+    _.defaults(this._options, {
+      heartbeatInterval: 15000,
+      heartbeatTimeout: 10000
+    });
   }
 
   _onconnect(...args) {

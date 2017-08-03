@@ -1,6 +1,7 @@
 /* eslint-env browser */
 
 import Url from 'url';
+import _ from 'lodash';
 import {CLOSE_REPLACED} from '../base-client';
 import {log} from '../util';
 
@@ -34,10 +35,7 @@ export default superclass => class BrowserMixin extends superclass {
       hostname: hostname || location.hostname,
       port: port || location.port,
       pathname,
-      query: {
-        ...query,
-        id: this.id
-      }
+      query: _.extend(query, {id: this.id})
     };
 
     return Url.format(urlObject);

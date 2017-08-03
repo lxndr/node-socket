@@ -1,4 +1,5 @@
 const path = require('path');
+const LodashModuleReplacementPlugin = require('lodash-webpack-plugin');
 
 module.exports = function (grunt) {
   require('load-grunt-tasks')(grunt);
@@ -32,11 +33,13 @@ module.exports = function (grunt) {
         presets: [
           ['env', {
             targets: {
-              node: 6
-            }
+              node: 4
+            },
+            exclude: [
+              'transform-regenerator'
+            ]
           }]
-        ],
-        plugins: ['transform-object-rest-spread']
+        ]
       },
       dist: {
         files: [{
@@ -61,13 +64,15 @@ module.exports = function (grunt) {
         output: {
           path: path.resolve(__dirname, 'dist'),
           filename: 'socket-es5.js',
-          libraryTarget: 'umd'
+          libraryTarget: 'umd',
+          pathinfo: true
         },
         module: {
           rules: [{
             test: /\.js$/,
             include: [
               path.resolve(__dirname, 'node_modules/mixwith'),
+              path.resolve(__dirname, 'node_modules/invariant'),
               path.resolve(__dirname, 'src')
             ],
             use: [{
@@ -85,13 +90,16 @@ module.exports = function (grunt) {
                   }]
                 ],
                 plugins: [
-                  require('babel-plugin-transform-object-rest-spread'),
+                  require('babel-plugin-lodash'),
                   require('babel-plugin-transform-node-env-inline')
                 ]
               }
             }]
           }]
-        }
+        },
+        plugins: [
+          new LodashModuleReplacementPlugin()
+        ]
       }
     },
 

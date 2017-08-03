@@ -306,22 +306,19 @@ export default class BaseClient extends Evented {
       return;
     }
 
-    _(this._queue)
-      .filter({sent: false})
-      .each(packet => {
+    _.each(this._queue, packet => {
+      if (packet.sent === false) {
         packet.sent = true;
         this._send(packet.data, err => {
           if (err && packet.deferred) {
             packet.deferred.reject(err);
           }
         });
-      });
+      }
+    });
 
     _.remove(this._queue, packet => {
       return packet.sent === true && !packet.deferred;
     });
-  }
-
-  _send() {
   }
 }

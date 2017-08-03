@@ -1,14 +1,13 @@
+import _ from 'lodash';
 import {Interval} from '../util';
-
-const defaultHeartbeatInterval = 15000;
 
 export default superclass => class HeartbeatMixin extends superclass {
   constructor(...args) {
     super(...args);
 
-    if (!this._options.heartbeatInterval) {
-      this._options.heartbeatInterval = defaultHeartbeatInterval;
-    }
+    _.defaults(this._options, {
+      heartbeatInterval: 15000
+    });
 
     this._heartbeatTimer = new Interval(this._options.heartbeatInterval, () => {
       this._ping();

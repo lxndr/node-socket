@@ -1,51 +1,107 @@
+import Url from 'url';
 import _ from 'lodash';
-import {Namespace} from './namespace';
+import ws from 'ws';
+import {mix} from 'mixwith';
+import BaseClient from '../base-client';
+import NodejsMixin from '../mixins/nodejs';
+import HeartbeatTimeoutMixin from '../mixins/heartbeat-timeout';
+import ConnectionTimeoutMixin from '../mixins/connection-timeout';
+import {Evented} from '../evented';
+import {Room} from './room';
+import {log} from '../util';
 
-/**
- *
- */
-export class ServerSocket {
+class Client extends mix(BaseClient).with(NodejsMixin, HeartbeatTimeoutMixin, ConnectionTimeoutMixin) {}
+
+export class ServerSocket extends Evented {
   constructor(httpServer, options) {
-    this.httpServer = httpServer;
-    this.namespaces = [];
+    super();
+    this.clients = [];
+    this._pendingClients = [];
 
-    this._options = {
+    this._options = _.defaults({}, options, {
       handshakeTimeout: 15000,
       heartbeatInterval: 15000,
       heartbeatTimeout: 10000,
-      connectionTimeout: 30000,
-      ...options
-    };
+      connectionTimeout: 30000
+    });
+
+    this.socket = new ws.Server({
+      server: httpServer,
+      path: this._options.path,
+      clientTracking: false,
+      verifyClient: (info, cb) => {
+        this._verifyClient(info).then(() => {
+          cb(true);
+        }, err => {
+          cb(false, 401, err.message);
+        });
+      }
+    });
+
+    this.socket.on('connection', _.bindKey(this, '_connection'));
   }
 
-  /**
-   * @param {String} name
-   */
-  of(name = null) {
-    let ns = _.find(this.namespaces, {name});
+  async _verifyClient(info) {
+    const id = Url.parse(info.req.url, true).query.id;
 
-    if (!ns) {
-      ns = new Namespace(this, name);
-      this.namespaces.push(ns);
+    if (!id) {
+      throw new Error('Client did not provided ID');
     }
 
-    return ns;
+    let client = _.find(this.clients, {id});
+
+    if (client) {
+      return;
+    }
+
+    _.remove(this._pendingClients, {id});
+
+    client = new Client(id, this._options);
+    this._pendingClients.push(client);
+
+    const timeoutId = setTimeout(() => {
+      log(`[${id}] timed out for shandshake`);
+      _.pull(this._pendingClients, client);
+    }, this._options.handshakeTimeout);
+
+    client.once('connect', () => {
+      clearTimeout(timeoutId);
+    });
+
+    if (this._options.verifyClient) {
+      await this._options.verifyClient(client, info.req);
+    }
+  }
+
+  _connection(socket, req) {
+    const id = Url.parse(req.url, true).query.id;
+    let client = _.find(this.clients, {id});
+
+    if (!client) {
+      client = _.remove(this._pendingClients, {id})[0];
+      client.once('close', () => {
+        _.pull(this.clients, client);
+      });
+
+      log(`[${id}] open`);
+      this.clients.push(client);
+      this.dispatchEvent('open', client);
+      client.dispatchEvent('open');
+    }
+
+    client._onconnect(socket);
   }
 
   /**
-   * @param {any} data
-   */
-  send(data) {
-    this.emit(null, data);
+  * @param {String} name
+  */
+  in(name) {
+    return new Room(this, name);
   }
 
-  /**
-   * @param {String} event
-   * @param {any} data
-   */
   emit(event, data) {
     return Promise.all(
-      this.namespaces.map(namespace => namespace.emit(event, data))
+      this.clients.map(client => client.emit(event, data))
     );
   }
 }

@@ -1,15 +1,14 @@
+import _ from 'lodash';
 import {CLOSE_TIMEOUT} from '../base-client';
-
-const defaultConnectionTimeout = 30000;
 
 export default superclass => class ConnectionTimeoutMixin extends superclass {
   constructor(...args) {
     super(...args);
     this._connectionTimeoutId = null;
 
-    if (!this._options.connectionTimeout) {
-      this._options.connectionTimeout = defaultConnectionTimeout;
-    }
+    _.defaults(this._options, {
+      connectionTimeout: 30000
+    });
   }
 
   _onconnect(...args) {
