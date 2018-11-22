@@ -321,4 +321,7 @@ export default class BaseClient extends Evented {
       return packet.sent === true && !packet.deferred;
     });
   }
+
+  _send() {
+  }
 }

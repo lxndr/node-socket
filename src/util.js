@@ -60,6 +60,7 @@ export class Interval {
   stop() {
     if (this.intervalId) {
       clearInterval(this.intervalId);
+      this.intervalId = null;
     }
   }
 
